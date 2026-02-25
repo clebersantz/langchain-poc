@@ -86,6 +86,7 @@ def test_connection() -> bool:
     """
     _log_connection_details()
     _probe_http_connection()
+    phase = "prepare"
     try:
         odoo_client.reset_auth()
         logger.info(
@@ -97,7 +98,16 @@ def test_connection() -> bool:
             api_key_present=bool(odoo_client._api_key),
             api_key_length=len(odoo_client._api_key),
         )
+        phase = "version"
         version = odoo_client.get_version()
+        logger.info(
+            "odoo_version_ok",
+            phase=phase,
+            common_endpoint=odoo_client._common_endpoint,
+            server_version=version.get("server_version"),
+            protocol_version=version.get("protocol_version"),
+        )
+        phase = "authenticate"
         uid = odoo_client.authenticate()
         logger.info(
             "odoo_connection_ok",
@@ -110,12 +120,14 @@ def test_connection() -> bool:
             "odoo_connection_failed",
             error=str(exc) or "ProtocolError",
             error_repr=repr(exc),
+            error_type=exc.__class__.__name__,
             url=exc.url,
             status_code=exc.errcode,
             reason=exc.errmsg,
             headers=_serialize_xmlrpc_headers(exc.headers),
             common_endpoint=odoo_client._common_endpoint,
             object_endpoint=odoo_client._models_endpoint,
+            phase=phase,
         )
         return False
     except Exception as exc:
@@ -123,7 +135,9 @@ def test_connection() -> bool:
             "odoo_connection_failed",
             error=str(exc),
             error_repr=repr(exc),
+            error_type=exc.__class__.__name__,
             common_endpoint=odoo_client._common_endpoint,
             object_endpoint=odoo_client._models_endpoint,
+            phase=phase,
         )
         return False
