@@ -1,6 +1,6 @@
 """Abstract base class for all LangChain agents in langchain-poc."""
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import Any
 
 from langchain_classic.agents.openai_tools.base import create_openai_tools_agent

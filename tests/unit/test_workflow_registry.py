@@ -1,6 +1,5 @@
 """Unit tests for the workflow registry (app/workflows/registry.py)."""
 
-import pytest
 
 
 class TestWorkflowRegistryRegistration:

@@ -4,8 +4,6 @@ Routes incoming messages to the appropriate sub-agent based on detected intent,
 and maintains persistent conversation history via SQLite.
 """
 
-from langchain_community.chat_message_histories import SQLChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from app.agents.base_agent import BaseAgent
 from app.agents.kb_agent import KBAgent
@@ -90,7 +88,6 @@ class SupervisorAgent(BaseAgent):
         else:
             # General conversation — answer directly with history
             history = get_session_history(session_id)
-            messages = history.messages
             full_prompt = _SYSTEM_PROMPT + f"\n\nUser: {message}"
             response = self._llm.invoke(full_prompt).content
             history.add_user_message(message)

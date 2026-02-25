@@ -4,7 +4,6 @@ Loads all Markdown files from the knowledge_base directory, splits them into
 overlapping chunks, embeds them with OpenAI, and stores them in ChromaDB.
 """
 
-import os
 from pathlib import Path
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter

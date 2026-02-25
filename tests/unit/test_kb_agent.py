@@ -6,9 +6,8 @@ required to be installed in the test environment.
 
 import sys
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Stub out heavy optional dependencies so the module is importable without
@@ -84,8 +83,6 @@ class TestKBAgentInit:
     def test_kb_agent_system_prompt_is_bilingual(self):
         """KBAgent system prompt should mention both English and PT-BR."""
         # Check the constant directly without importing the full module chain
-        import importlib.util
-        import ast
 
         kb_agent_path = (
             __file__
