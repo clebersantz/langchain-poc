@@ -29,6 +29,7 @@ def _ensure_stubs():
         "langchain_core.tools",
         "langchain",
         "langchain.agents",
+        "langchain.agents.openai_tools",
         "langchain_core.prompts",
     ]:
         if pkg not in sys.modules:
@@ -44,6 +45,12 @@ def _ensure_stubs():
         tool_mod.tool = lambda f: f  # type: ignore
     if not hasattr(tool_mod, "BaseTool"):
         tool_mod.BaseTool = object  # type: ignore
+
+    openai_tools_mod = sys.modules.setdefault(
+        "langchain.agents.openai_tools", types.ModuleType("langchain.agents.openai_tools")
+    )
+    if not hasattr(openai_tools_mod, "create_openai_tools_agent"):
+        openai_tools_mod.create_openai_tools_agent = MagicMock  # type: ignore
 
 
 _ensure_stubs()
