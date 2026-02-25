@@ -6,9 +6,8 @@ required to be installed in the test environment.
 
 import sys
 import types
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Stub out heavy optional dependencies so the module is importable without
@@ -28,7 +27,11 @@ def _ensure_stubs():
         "langchain_core",
         "langchain_core.tools",
         "langchain",
-        "langchain.agents",
+        "langchain_classic",
+        "langchain_classic.agents",
+        "langchain_classic.agents.agent",
+        "langchain_classic.agents.openai_tools",
+        "langchain_classic.agents.openai_tools.base",
         "langchain_core.prompts",
     ]:
         if pkg not in sys.modules:
@@ -44,6 +47,19 @@ def _ensure_stubs():
         tool_mod.tool = lambda f: f  # type: ignore
     if not hasattr(tool_mod, "BaseTool"):
         tool_mod.BaseTool = object  # type: ignore
+
+    openai_tools_mod = sys.modules.setdefault(
+        "langchain_classic.agents.openai_tools.base",
+        types.ModuleType("langchain_classic.agents.openai_tools.base"),
+    )
+    if not hasattr(openai_tools_mod, "create_openai_tools_agent"):
+        openai_tools_mod.create_openai_tools_agent = MagicMock  # type: ignore
+
+    agent_mod = sys.modules.setdefault(
+        "langchain_classic.agents.agent", types.ModuleType("langchain_classic.agents.agent")
+    )
+    if not hasattr(agent_mod, "AgentExecutor"):
+        agent_mod.AgentExecutor = MagicMock  # type: ignore
 
 
 _ensure_stubs()
@@ -67,8 +83,6 @@ class TestKBAgentInit:
     def test_kb_agent_system_prompt_is_bilingual(self):
         """KBAgent system prompt should mention both English and PT-BR."""
         # Check the constant directly without importing the full module chain
-        import importlib.util
-        import ast
 
         kb_agent_path = (
             __file__
@@ -88,7 +102,7 @@ class TestBaseAgentImports:
     """Tests for BaseAgent import expectations."""
 
     def test_base_agent_imports_agentexecutor_from_agents_module(self):
-        """BaseAgent should import AgentExecutor from langchain.agents.agent."""
+        """BaseAgent should import AgentExecutor from langchain_classic.agents.agent."""
         import os
 
         base_agent_path = os.path.join(
@@ -96,7 +110,7 @@ class TestBaseAgentImports:
         )
         with open(base_agent_path) as f:
             source = f.read()
-        assert "langchain.agents.agent" in source
+        assert "langchain_classic.agents.agent" in source
 
 
 class TestKBAgentAnswer:

@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestSupervisorRouting:
@@ -10,10 +9,10 @@ class TestSupervisorRouting:
 
     def _make_supervisor(self):
         """Build a SupervisorAgent with all sub-agents mocked."""
-        with patch("app.agents.supervisor.ChatOpenAI") as mock_llm_cls, \
-             patch("app.agents.supervisor.KBAgent") as mock_kb_cls, \
-             patch("app.agents.supervisor.OdooAPIAgent") as mock_odoo_cls, \
-             patch("app.agents.supervisor.WorkflowAgent") as mock_wf_cls, \
+        with patch("app.agents.supervisor.ChatOpenAI"), \
+             patch("app.agents.supervisor.KBAgent"), \
+             patch("app.agents.supervisor.OdooAPIAgent"), \
+             patch("app.agents.supervisor.WorkflowAgent"), \
              patch("app.agents.supervisor.get_session_history") as mock_history:
 
             from app.agents.supervisor import SupervisorAgent
