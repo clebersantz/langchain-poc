@@ -27,12 +27,28 @@ def _normalize_odoo_url(url: str) -> str:
     Returns:
         str: Base Odoo URL without ``/xmlrpc/2`` suffixes.
     """
-    normalized = url.rstrip("/")
+    normalized = url.strip().rstrip("/")
     for suffix in ("/xmlrpc/2/common", "/xmlrpc/2/object", "/xmlrpc/2"):
         if normalized.endswith(suffix):
             normalized = normalized[: -len(suffix)]
             break
     return normalized.rstrip("/")
+
+
+def _build_server_proxy(endpoint: str) -> xmlrpc.client.ServerProxy:
+    """Create a ServerProxy configured for Odoo XML-RPC calls.
+
+    Args:
+        endpoint: Full XML-RPC endpoint URL.
+
+    Returns:
+        xmlrpc.client.ServerProxy: Configured proxy instance.
+    """
+    return xmlrpc.client.ServerProxy(
+        endpoint,
+        allow_none=True,
+        use_builtin_types=True,
+    )
 
 
 class OdooClient:
@@ -55,8 +71,8 @@ class OdooClient:
 
         self._common_endpoint = f"{self._url}/xmlrpc/2/common"
         self._models_endpoint = f"{self._url}/xmlrpc/2/object"
-        self._common = xmlrpc.client.ServerProxy(self._common_endpoint)
-        self._models = xmlrpc.client.ServerProxy(self._models_endpoint)
+        self._common = _build_server_proxy(self._common_endpoint)
+        self._models = _build_server_proxy(self._models_endpoint)
 
     # ------------------------------------------------------------------
     # Authentication

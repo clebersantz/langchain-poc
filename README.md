@@ -101,6 +101,12 @@ Open `http://localhost:8000/static/index.html` in your browser.
 
 ---
 
+> **Odoo XML-RPC Auth:** Set `ODOO_URL` to the base URL (include `http://` or `https://`, no
+> `/xmlrpc/2` suffix). Use an API key in place of the password when calling
+> `common.authenticate(...)` and `execute_kw(...)`.
+
+---
+
 ## Agents
 
 ### 1. Supervisor Agent

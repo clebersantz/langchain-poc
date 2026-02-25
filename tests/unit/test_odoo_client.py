@@ -68,9 +68,9 @@ class TestOdooClientInit:
         """__init__ should normalize XML-RPC suffixes from the base URL."""
         with (
             patch("app.odoo.client.settings") as mock_settings,
-            patch("xmlrpc.client.ServerProxy"),
+            patch("xmlrpc.client.ServerProxy") as mock_proxy,
         ):
-            mock_settings.odoo_url = "http://odoo:8069/xmlrpc/2/common"
+            mock_settings.odoo_url = " http://odoo:8069/xmlrpc/2/common "
             mock_settings.odoo_db = "odoo"
             mock_settings.odoo_user = "admin@test.com"
             mock_settings.odoo_api_key = "test_key"
@@ -82,6 +82,16 @@ class TestOdooClientInit:
             assert client._url == "http://odoo:8069"
             assert client._common_endpoint == "http://odoo:8069/xmlrpc/2/common"
             assert client._models_endpoint == "http://odoo:8069/xmlrpc/2/object"
+            assert mock_proxy.call_args_list == [
+                (
+                    ("http://odoo:8069/xmlrpc/2/common",),
+                    {"allow_none": True, "use_builtin_types": True},
+                ),
+                (
+                    ("http://odoo:8069/xmlrpc/2/object",),
+                    {"allow_none": True, "use_builtin_types": True},
+                ),
+            ]
 
 
 class TestOdooClientSearchRead:

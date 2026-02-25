@@ -23,6 +23,24 @@ print(version)  # Should return dict with server_version
 
 ---
 
+**Problem 1B: ProtocolError During Authentication**
+
+*Symptoms*: `xmlrpc.client.ProtocolError` with `301`, `302`, or `404` when calling
+`common.authenticate(...)`
+
+*Causes and Solutions*:
+1. **Wrong base URL** — `ODOO_URL` must be the base URL (no `/xmlrpc/2` suffix)
+2. **HTTP ↔ HTTPS redirect** — Use `https://` if the server redirects HTTPS
+3. **Reverse proxy subpath** — Include the subpath if Odoo is hosted under one (e.g. `/odoo`)
+
+```python
+url = "https://mycompany.odoo.com"  # Base URL only
+common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", allow_none=True)
+uid = common.authenticate(db, username, api_key, {})
+```
+
+---
+
 **Problem 2: Access Rights Error (Fault 2)**
 
 *Symptoms*: `xmlrpc.client.Fault: <Fault 2: "Access Denied">`
