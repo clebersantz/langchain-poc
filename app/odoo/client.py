@@ -30,14 +30,16 @@ class OdooClient:
     """
 
     def __init__(self) -> None:
-        self._url = settings.odoo_url
+        self._url = settings.odoo_url.rstrip("/")
         self._db = settings.odoo_db
         self._user = settings.odoo_user
         self._api_key = settings.odoo_api_key
         self._uid: int | None = None
 
-        self._common = xmlrpc.client.ServerProxy(f"{self._url}/xmlrpc/2/common")
-        self._models = xmlrpc.client.ServerProxy(f"{self._url}/xmlrpc/2/object")
+        self._common_endpoint = f"{self._url}/xmlrpc/2/common"
+        self._models_endpoint = f"{self._url}/xmlrpc/2/object"
+        self._common = xmlrpc.client.ServerProxy(self._common_endpoint)
+        self._models = xmlrpc.client.ServerProxy(self._models_endpoint)
 
     # ------------------------------------------------------------------
     # Authentication
