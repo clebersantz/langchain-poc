@@ -13,6 +13,8 @@ services:
     depends_on:
       - chroma
     restart: unless-stopped
+    networks:
+      - odoo-dev_default
 
   chroma:
     image: chromadb/chroma:latest
@@ -21,6 +23,12 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
     restart: unless-stopped
+    networks:
+      - odoo-dev_default
 
 volumes:
   chroma_data:
+
+networks:
+  odoo-dev_default:
+    external: true
