@@ -89,7 +89,7 @@ BANT Score ──0-49──► Stage: New (keep as lead)
 2. **Stage "Qualified" doesn't exist** — fall back to the first available stage
 3. **No salesperson available** — leave `user_id` unset and add a chatter note
 4. **Lead is archived (active=False)** — log warning, do not process
-5. **XML-RPC error on write** — log error, mark workflow as failed
+5. **JSON-RPC error on write** — log error, mark workflow as failed
 
 ---
 

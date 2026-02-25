@@ -37,7 +37,7 @@ Odoo 16 includes a **Email Marketing** module that integrates with CRM:
 4. Track opens, clicks, and bounces
 5. Automatically log activity on leads whose emails are opened
 
-### Creating a Mailing from CRM Leads via XML-RPC
+### Creating a Mailing from CRM Leads via JSON-RPC
 
 ```python
 # Get lead email addresses
@@ -60,7 +60,7 @@ Odoo uses `mail.template` records for standardised emails. CRM-related templates
 - Automated actions
 - Scheduled activities of type "Email"
 
-### Sending a Template Email to a Lead via XML-RPC
+### Sending a Template Email to a Lead via JSON-RPC
 
 ```python
 # Find the template id

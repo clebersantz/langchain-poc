@@ -70,5 +70,5 @@ crm.team ──── member_ids ──► res.users (salespeople)
 ## Reference Links
 
 - Odoo 16 CRM documentation: https://www.odoo.com/documentation/16.0/applications/sales/crm.html
-- Odoo XML-RPC API: https://www.odoo.com/documentation/16.0/developer/reference/external_api.html
+- Odoo JSON-RPC API: https://www.odoo.com/documentation/16.0/developer/reference/external_api.html
 - crm.lead model: https://github.com/odoo/odoo/blob/16.0/addons/crm/models/crm_lead.py

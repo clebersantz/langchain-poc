@@ -1,10 +1,8 @@
 """Odoo authentication helpers."""
 
-import xmlrpc.client
-
 import httpx
 
-from app.odoo.client import odoo_client
+from app.odoo.client import OdooJSONRPCError, odoo_client
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -12,21 +10,20 @@ logger = get_logger(__name__)
 HTTP_PROBE_TIMEOUT = 5.0
 
 
-def _serialize_xmlrpc_headers(headers: object | None) -> dict[str, str] | None:
-    """Serialize XML-RPC HTTP headers for structured logging.
+def _serialize_jsonrpc_error_data(data: object | None) -> object | None:
+    """Serialize JSON-RPC error data for structured logging.
 
     Args:
-        headers: Headers from xmlrpc.client.ProtocolError.
+        data: JSON-RPC error payload from Odoo.
 
     Returns:
-        dict[str, str] | None: Header mapping for logs, if available.
+        object | None: Serializable error payload.
     """
-    if not headers:
+    if data is None:
         return None
-    try:
-        return {key: headers.get(key) for key in headers.keys()}
-    except Exception:
-        return {"raw": str(headers)}
+    if isinstance(data, (dict, list, str, int, float, bool)):
+        return data
+    return str(data)
 
 
 def _log_connection_details() -> None:
@@ -37,8 +34,7 @@ def _log_connection_details() -> None:
         db=odoo_client._db,
         user=odoo_client._user,
         api_key=odoo_client._api_key,
-        common_endpoint=odoo_client._common_endpoint,
-        object_endpoint=odoo_client._models_endpoint,
+        jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
     )
 
 
@@ -79,7 +75,7 @@ def _probe_http_connection() -> None:
 
 
 def test_connection() -> bool:
-    """Test the Odoo XML-RPC connection by attempting authentication.
+    """Test the Odoo JSON-RPC connection by attempting authentication.
 
     Returns:
         bool: True if the connection and authentication succeed, False otherwise.
@@ -93,8 +89,7 @@ def test_connection() -> bool:
             "odoo_auth_attempt",
             db=odoo_client._db,
             user=odoo_client._user,
-            common_endpoint=odoo_client._common_endpoint,
-            object_endpoint=odoo_client._models_endpoint,
+            jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
             api_key_present=bool(odoo_client._api_key),
             api_key_length=len(odoo_client._api_key),
         )
@@ -103,7 +98,7 @@ def test_connection() -> bool:
         logger.info(
             "odoo_version_ok",
             phase=phase,
-            common_endpoint=odoo_client._common_endpoint,
+            jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
             server_version=version.get("server_version"),
             protocol_version=version.get("protocol_version"),
         )
@@ -115,18 +110,26 @@ def test_connection() -> bool:
             server_version=version.get("server_version"),
         )
         return True
-    except xmlrpc.client.ProtocolError as exc:
+    except OdooJSONRPCError as exc:
         logger.warning(
             "odoo_connection_failed",
-            error=str(exc) or "ProtocolError",
+            error=str(exc) or "JSON-RPC error",
             error_repr=repr(exc),
             error_type=exc.__class__.__name__,
-            url=exc.url,
-            status_code=exc.errcode,
-            reason=exc.errmsg,
-            headers=_serialize_xmlrpc_headers(exc.headers),
-            common_endpoint=odoo_client._common_endpoint,
-            object_endpoint=odoo_client._models_endpoint,
+            status_code=exc.http_status,
+            jsonrpc_code=exc.code,
+            jsonrpc_data=_serialize_jsonrpc_error_data(exc.data),
+            jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
+            phase=phase,
+        )
+        return False
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "odoo_connection_failed",
+            error=str(exc),
+            error_repr=repr(exc),
+            error_type=exc.__class__.__name__,
+            jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
             phase=phase,
         )
         return False
@@ -136,8 +139,7 @@ def test_connection() -> bool:
             error=str(exc),
             error_repr=repr(exc),
             error_type=exc.__class__.__name__,
-            common_endpoint=odoo_client._common_endpoint,
-            object_endpoint=odoo_client._models_endpoint,
+            jsonrpc_endpoint=odoo_client._jsonrpc_endpoint,
             phase=phase,
         )
         return False

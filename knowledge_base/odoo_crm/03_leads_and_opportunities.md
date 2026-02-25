@@ -38,7 +38,7 @@ When leads are enabled, new incoming contacts start as leads and must be manuall
 - CRM → Leads → Import (CSV/Excel)
 - Map spreadsheet columns to crm.lead fields
 
-### 5. XML-RPC API
+### 5. JSON-RPC API
 - Create programmatically via the Odoo external API (see code examples below)
 
 ---
@@ -51,7 +51,7 @@ When leads are enabled, new incoming contacts start as leads and must be manuall
 3. Optionally merge with existing opportunities or link to a partner
 4. Select the pipeline stage and assign a salesperson
 
-### Via XML-RPC
+### Via JSON-RPC
 
 ```python
 # Method 1: Update type and stage_id directly
@@ -63,7 +63,7 @@ client.execute_kw(db, uid, api_key, 'crm.lead', 'write',
     }])
 
 # Method 2: Use the action_set_won equivalent — convert_opportunity_to_lead
-# Note: In Odoo 16, direct write on type is the recommended XML-RPC approach
+# Note: In Odoo 16, direct write on type is the recommended JSON-RPC approach
 ```
 
 ---
@@ -105,21 +105,37 @@ client.execute_kw(db, uid, api_key, 'crm.lead', 'write',
 
 ---
 
-## XML-RPC Code Examples
+## JSON-RPC Code Examples
 
 ### Authenticate
 
 ```python
-import xmlrpc.client
+import requests
 
-url = "http://localhost:8069"  # Base URL (no /xmlrpc/2 suffix)
+url = "http://localhost:8069"  # Base URL (no /jsonrpc suffix)
 db = "odoo"
 username = "admin@example.com"
 api_key = "your_api_key"  # Preferences → Account Security
 
-common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common")
-uid = common.authenticate(db, username, api_key, {})
-models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object")
+def json_rpc(service, method, args):
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "call",
+        "params": {"service": service, "method": method, "args": args},
+        "id": 1,
+    }
+    return requests.post(f"{url}/jsonrpc", json=payload).json()["result"]
+
+class JsonRpcModels:
+    def execute_kw(self, db, uid, api_key, model, method, args, kwargs=None):
+        return json_rpc(
+            "object",
+            "execute_kw",
+            [db, uid, api_key, model, method, args, kwargs or {}],
+        )
+
+uid = json_rpc("common", "login", [db, username, api_key])
+models = JsonRpcModels()
 ```
 
 ### Create a Lead

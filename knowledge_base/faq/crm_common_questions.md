@@ -8,20 +8,29 @@ A: Both are stored in the `crm.lead` model. A **Lead** (`type = "lead"`) is an u
 
 ---
 
-**Q: How do I create a lead via the Odoo XML-RPC API?**
+**Q: How do I create a lead via the Odoo JSON-RPC API?**
 
 A:
 ```python
-import xmlrpc.client
-models = xmlrpc.client.ServerProxy("http://localhost:8069/xmlrpc/2/object")
+import requests
 
-lead_id = models.execute_kw(db, uid, api_key, 'crm.lead', 'create', [{
+def json_rpc(service, method, args):
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "call",
+        "params": {"service": service, "method": method, "args": args},
+        "id": 1,
+    }
+    return requests.post("http://localhost:8069/jsonrpc", json=payload).json()["result"]
+
+uid = json_rpc("common", "login", [db, user, api_key])
+lead_id = json_rpc("object", "execute_kw", [db, uid, api_key, 'crm.lead', 'create', [{
     'name': 'New Inquiry — Acme Corp',
     'contact_name': 'John Doe',
     'email_from': 'john@acme.com',
     'phone': '+1-555-1234',
     'type': 'lead',
-}])
+}], {}])
 ```
 
 ---

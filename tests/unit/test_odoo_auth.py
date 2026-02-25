@@ -21,8 +21,7 @@ def test_connection_runs_http_probe_and_authentication() -> None:
         mock_client._db = "odoo"
         mock_client._user = "user@example.com"
         mock_client._api_key = "secret-key"
-        mock_client._common_endpoint = "http://odoo:8069/xmlrpc/2/common"
-        mock_client._models_endpoint = "http://odoo:8069/xmlrpc/2/object"
+        mock_client._jsonrpc_endpoint = "http://odoo:8069/jsonrpc"
         mock_client.reset_auth.return_value = None
         mock_client.get_version.return_value = {"server_version": "16.0"}
         mock_client.authenticate.return_value = 7

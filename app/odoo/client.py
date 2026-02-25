@@ -1,34 +1,53 @@
-"""Odoo 16 XML-RPC client.
+"""Odoo 16 JSON-RPC client.
 
-Provides a thin wrapper around Python's built-in ``xmlrpc.client`` to communicate
-with an Odoo 16 instance using the two standard XML-RPC endpoints:
-
-* ``/xmlrpc/2/common``  — version info and authentication
-* ``/xmlrpc/2/object``  — model CRUD operations
-
-# TODO: v18 - add native REST API support when migrating to Odoo 18
+Provides a thin wrapper around Odoo's JSON-RPC endpoint (``/jsonrpc``) for
+authentication, metadata, and CRUD operations via ``execute_kw``.
 """
 
-import xmlrpc.client
+from __future__ import annotations
+
+import uuid
 from typing import Any
+
+import httpx
 
 from app.config import settings
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+JSONRPC_TIMEOUT = 10.0
+
+
+class OdooJSONRPCError(RuntimeError):
+    """JSON-RPC error returned by Odoo."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: int | None = None,
+        data: Any | None = None,
+        http_status: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.data = data
+        self.http_status = http_status
+
 
 def _normalize_odoo_url(url: str) -> str:
-    """Normalize the Odoo base URL by stripping XML-RPC path suffixes.
+    """Normalize the Odoo base URL by stripping API path suffixes.
 
     Args:
         url: Raw Odoo URL from settings.
 
     Returns:
-        str: Base Odoo URL without ``/xmlrpc/2`` suffixes.
+        str: Base Odoo URL without XML/JSON-RPC suffixes.
     """
     normalized = url.strip().rstrip("/")
     for suffix in (
+        "/jsonrpc",
         "/xmlrpc/2/common",
         "/xmlrpc/2/object",
         "/xmlrpc/2",
@@ -42,24 +61,8 @@ def _normalize_odoo_url(url: str) -> str:
     return normalized.rstrip("/")
 
 
-def _build_server_proxy(endpoint: str) -> xmlrpc.client.ServerProxy:
-    """Create a ServerProxy configured for Odoo XML-RPC calls.
-
-    Args:
-        endpoint: Full XML-RPC endpoint URL.
-
-    Returns:
-        xmlrpc.client.ServerProxy: Configured proxy instance.
-    """
-    return xmlrpc.client.ServerProxy(
-        endpoint,
-        allow_none=True,
-        use_builtin_types=True,
-    )
-
-
 class OdooClient:
-    """XML-RPC client for Odoo 16.
+    """JSON-RPC client for Odoo 16.
 
     Usage::
 
@@ -75,47 +78,58 @@ class OdooClient:
         self._user = settings.odoo_user
         self._api_key = settings.odoo_api_key
         self._uid: int | None = None
+        self._jsonrpc_endpoint = f"{self._url}/jsonrpc"
 
-        self._set_endpoints("xmlrpc/2")
-
-    def _set_endpoints(self, base_path: str) -> None:
-        """Set XML-RPC endpoints and rebuild proxies.
+    def _jsonrpc_call(self, service: str, method: str, args: list[Any]) -> Any:
+        """Call an Odoo JSON-RPC service method.
 
         Args:
-            base_path: Base XML-RPC path (e.g. ``"xmlrpc/2"`` or ``"xmlrpc"``).
+            service: Odoo service name (``common`` or ``object``).
+            method: Service method to call.
+            args: Positional arguments for the method.
+
+        Returns:
+            Any: The ``result`` field from the JSON-RPC response.
+
+        Raises:
+            OdooJSONRPCError: If the response contains a JSON-RPC error.
+            httpx.HTTPError: If the HTTP request fails.
         """
-        normalized_path = base_path.strip("/")
-        self._common_endpoint = f"{self._url}/{normalized_path}/common"
-        self._models_endpoint = f"{self._url}/{normalized_path}/object"
-        self._common = _build_server_proxy(self._common_endpoint)
-        self._models = _build_server_proxy(self._models_endpoint)
-
-    def _uses_legacy_login(self) -> bool:
-        """Return True if legacy /xmlrpc endpoints are in use."""
-        endpoint = getattr(self, "_common_endpoint", "")
-        return endpoint.endswith("/xmlrpc/common")
-
-    def _should_fallback_legacy(self, exc: xmlrpc.client.ProtocolError) -> bool:
-        """Return True if a legacy /xmlrpc retry should be attempted."""
-        endpoint = getattr(self, "_common_endpoint", "")
-        return exc.errcode == 404 and endpoint.endswith("/xmlrpc/2/common")
-
-    def _switch_to_legacy_endpoints(self, exc: xmlrpc.client.ProtocolError) -> None:
-        """Switch to legacy /xmlrpc endpoints and log the fallback."""
-        if self._uses_legacy_login():
-            return
-        legacy_common = f"{self._url}/xmlrpc/common"
-        legacy_models = f"{self._url}/xmlrpc/object"
-        logger.warning(
-            "odoo_xmlrpc_fallback",
-            status_code=exc.errcode,
-            from_common_endpoint=self._common_endpoint,
-            to_common_endpoint=legacy_common,
-            from_object_endpoint=self._models_endpoint,
-            to_object_endpoint=legacy_models,
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": {"service": service, "method": method, "args": args},
+            "id": uuid.uuid4().hex,
+        }
+        response = httpx.post(
+            self._jsonrpc_endpoint,
+            json=payload,
+            timeout=JSONRPC_TIMEOUT,
         )
-        self._uid = None
-        self._set_endpoints("xmlrpc")
+        response.raise_for_status()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise OdooJSONRPCError(
+                "Invalid JSON-RPC response",
+                http_status=response.status_code,
+                data=response.text,
+            ) from exc
+        if "error" in data:
+            error = data.get("error") or {}
+            raise OdooJSONRPCError(
+                error.get("message", "JSON-RPC error"),
+                code=error.get("code"),
+                data=error.get("data"),
+                http_status=response.status_code,
+            )
+        if "result" not in data:
+            raise OdooJSONRPCError(
+                "Malformed JSON-RPC response",
+                http_status=response.status_code,
+                data=data,
+            )
+        return data["result"]
 
     # ------------------------------------------------------------------
     # Authentication
@@ -132,17 +146,11 @@ class OdooClient:
         """
         if self._uid is not None:
             return self._uid
-        try:
-            if self._uses_legacy_login():
-                uid = self._common.login(self._db, self._user, self._api_key)
-            else:
-                uid = self._common.authenticate(self._db, self._user, self._api_key, {})
-        except xmlrpc.client.ProtocolError as exc:
-            if self._should_fallback_legacy(exc):
-                self._switch_to_legacy_endpoints(exc)
-                uid = self._common.login(self._db, self._user, self._api_key)
-            else:
-                raise
+        uid = self._jsonrpc_call(
+            "common",
+            "login",
+            [self._db, self._user, self._api_key],
+        )
         if not uid:
             raise ValueError("Odoo authentication failed — check ODOO_USER and ODOO_API_KEY")
         self._uid = uid
@@ -158,18 +166,8 @@ class OdooClient:
     # ------------------------------------------------------------------
 
     def get_version(self) -> dict:
-        """Return the Odoo server version information.
-
-        Returns:
-            dict: Server version details from ``/xmlrpc/2/common`` (or legacy ``/xmlrpc/common``).
-        """
-        try:
-            return self._common.version()
-        except xmlrpc.client.ProtocolError as exc:
-            if self._should_fallback_legacy(exc):
-                self._switch_to_legacy_endpoints(exc)
-                return self._common.version()
-            raise
+        """Return the Odoo server version information."""
+        return self._jsonrpc_call("common", "version", [])
 
     # ------------------------------------------------------------------
     # Generic execute
@@ -188,18 +186,11 @@ class OdooClient:
             Any: The return value of the Odoo method.
         """
         uid = self.authenticate()
-        try:
-            return self._models.execute_kw(
-                self._db, uid, self._api_key, model, method, list(args), kwargs
-            )
-        except xmlrpc.client.ProtocolError as exc:
-            if exc.errcode == 404 and self._models_endpoint.endswith("/xmlrpc/2/object"):
-                self._switch_to_legacy_endpoints(exc)
-                uid = self.authenticate()
-                return self._models.execute_kw(
-                    self._db, uid, self._api_key, model, method, list(args), kwargs
-                )
-            raise
+        return self._jsonrpc_call(
+            "object",
+            "execute_kw",
+            [self._db, uid, self._api_key, model, method, list(args), kwargs],
+        )
 
     # ------------------------------------------------------------------
     # Convenience helpers

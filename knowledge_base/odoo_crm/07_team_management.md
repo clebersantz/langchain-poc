@@ -40,7 +40,7 @@ Sales teams in Odoo 16 group salespeople together for pipeline management, repor
 2. Add users to the **Members** field
 3. Save
 
-### Via XML-RPC
+### Via JSON-RPC
 
 ```python
 # Get team
@@ -64,7 +64,7 @@ Odoo 16 CRM supports automatic lead assignment in round-robin order:
 - Leads are distributed equally among team members
 - Assignment runs on a configurable schedule (daily/weekly/manual)
 
-### Triggering Assignment via XML-RPC
+### Triggering Assignment via JSON-RPC
 
 ```python
 # Trigger manual assignment for a team
@@ -90,7 +90,7 @@ stage_id = models.execute_kw(db, uid, api_key, 'crm.stage', 'create', [{
 
 ---
 
-## Querying Teams via XML-RPC
+## Querying Teams via JSON-RPC
 
 ```python
 # Get all active teams

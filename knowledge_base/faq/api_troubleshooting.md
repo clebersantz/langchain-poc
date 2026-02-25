@@ -1,4 +1,4 @@
-# Odoo XML-RPC API Troubleshooting
+# Odoo JSON-RPC API Troubleshooting
 
 ## Common Issues and Solutions
 
@@ -17,42 +17,45 @@
 
 ```python
 # Debug: check version endpoint (no auth required)
-version = common.version()
+payload = {
+    "jsonrpc": "2.0",
+    "method": "call",
+    "params": {"service": "common", "method": "version", "args": []},
+    "id": 1,
+}
+version = requests.post(f"{url}/jsonrpc", json=payload).json()["result"]
 print(version)  # Should return dict with server_version
 ```
 
 ---
 
-**Problem 1B: ProtocolError During Authentication**
+**Problem 1B: HTTP 404 or JSON-RPC Error During Authentication**
 
-*Symptoms*: `xmlrpc.client.ProtocolError` with `301`, `302`, or `404` when calling
-`common.authenticate(...)`
+*Symptoms*: HTTP `404` or JSON-RPC error when calling `common.login(...)` via `/jsonrpc`
 
 *Causes and Solutions*:
-1. **Wrong base URL** — `ODOO_URL` must be the base URL (no `/xmlrpc/2` suffix)
+1. **Wrong base URL** — `ODOO_URL` must be the base URL (no `/jsonrpc` suffix)
 2. **HTTP ↔ HTTPS redirect** — Use `https://` if the server redirects HTTPS
 3. **Reverse proxy subpath** — Include the subpath if Odoo is hosted under one (e.g. `/odoo`)
-4. **Legacy XML-RPC path** — Some deployments expose `/xmlrpc/common` and `/xmlrpc/object`
-   (no `/2`). If `/xmlrpc/2` returns `404`, try the legacy path.
 
 ```python
+import requests
+
 url = "https://mycompany.odoo.com"  # Base URL only
-common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", allow_none=True)
-uid = common.authenticate(db, username, api_key, {})
-```
-
-```python
-# Legacy path fallback (older XML-RPC endpoint)
-root = "https://mycompany.odoo.com/xmlrpc/"
-common = xmlrpc.client.ServerProxy(f"{root}common", allow_none=True)
-uid = common.login(db, username, api_key)
+payload = {
+    "jsonrpc": "2.0",
+    "method": "call",
+    "params": {"service": "common", "method": "login", "args": [db, username, api_key]},
+    "id": 1,
+}
+uid = requests.post(f"{url}/jsonrpc", json=payload).json()["result"]
 ```
 
 ---
 
-**Problem 2: Access Rights Error (Fault 2)**
+**Problem 2: Access Rights Error**
 
-*Symptoms*: `xmlrpc.client.Fault: <Fault 2: "Access Denied">`
+*Symptoms*: JSON-RPC error response with `"Access Denied"` or code `2`
 
 *Causes and Solutions*:
 1. **Insufficient permissions** — The API user must have appropriate access rights for the model
@@ -135,11 +138,15 @@ for name, info in sorted(fields.items()):
 *Solutions*:
 1. Increase timeout:
 ```python
-import xmlrpc.client
-import socket
+import requests
 
-socket.setdefaulttimeout(30)  # 30 seconds
-models = xmlrpc.client.ServerProxy("http://localhost:8069/xmlrpc/2/object")
+payload = {
+    "jsonrpc": "2.0",
+    "method": "call",
+    "params": {"service": "common", "method": "version", "args": []},
+    "id": 1,
+}
+requests.post(f"{url}/jsonrpc", json=payload, timeout=30)
 ```
 
 2. Check Odoo server status — it may be starting up or under heavy load
@@ -188,17 +195,17 @@ user_name = lead['user_id'][1] if lead['user_id'] else 'Unassigned'
 
 ---
 
-**Problem 9: execute_kw Raises Fault on action_set_won**
+**Problem 9: execute_kw Raises Error on action_set_won**
 
-*Symptoms*: Error when calling `action_set_won` via XML-RPC
+*Symptoms*: Error when calling `action_set_won` via JSON-RPC
 
-*Explanation*: Some Odoo server actions return client actions (JavaScript redirects) that are not meaningful via XML-RPC.
+*Explanation*: Some Odoo server actions return client actions (JavaScript redirects) that are not meaningful via JSON-RPC.
 
 *Workaround*:
 ```python
 try:
     models.execute_kw(db, uid, api_key, 'crm.lead', 'action_set_won', [[lead_id]])
-except xmlrpc.client.Fault:
+except Exception:
     # Fallback: direct write to mark as won
     won_stage = models.execute_kw(db, uid, api_key, 'crm.stage', 'search_read',
         [[['is_won', '=', True]]], {'fields': ['id'], 'limit': 1})
@@ -232,11 +239,11 @@ models.execute_kw(db, uid, api_key, 'mail.activity', 'create', [{
 
 ---
 
-**Problem 11: XML-RPC vs REST API**
+**Problem 11: JSON-RPC vs REST API**
 
-*Question*: Should I use XML-RPC or the REST API?
+*Question*: Should I use JSON-RPC or the REST API?
 
-*Odoo 16 answer*: Odoo 16 does not have a stable REST API. Use XML-RPC (`/xmlrpc/2/object`).
+*Odoo 16 answer*: Odoo 16 does not have a stable REST API. Use JSON-RPC (`/jsonrpc`).
 
 The Odoo 17/18 REST API is available via `/api/{model}` but is not present in Odoo 16.
 

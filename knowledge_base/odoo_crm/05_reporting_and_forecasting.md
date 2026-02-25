@@ -41,7 +41,7 @@ Odoo 16 CRM includes built-in reporting and forecasting tools to help sales mana
 
 ---
 
-## XML-RPC Queries for Reporting
+## JSON-RPC Queries for Reporting
 
 ### Pipeline Value by Stage
 

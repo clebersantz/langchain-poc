@@ -77,7 +77,7 @@ For each eligible opportunity:
 1. **All opportunities have recent activity** — exit early with count=0
 2. **Opportunity stage is "Won"** — skip; already closed
 3. **User has too many overdue activities** — log warning; still create activity
-4. **XML-RPC error on activity creation** — log error, continue with next opportunity
+4. **JSON-RPC error on activity creation** — log error, continue with next opportunity
 5. **Context has invalid `user_id`** — ignore filter, process all eligible
 
 ---

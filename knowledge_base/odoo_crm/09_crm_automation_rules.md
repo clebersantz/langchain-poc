@@ -47,7 +47,7 @@ Odoo 16 includes an **Automated Actions** engine (`base.automation`) that can tr
 
 ---
 
-## Creating an Automation Rule via XML-RPC
+## Creating an Automation Rule via JSON-RPC
 
 ```python
 # Create a time-based automation rule
@@ -66,7 +66,7 @@ rule_id = models.execute_kw(db, uid, api_key, 'base.automation', 'create', [{
 
 ---
 
-## Querying Automation Rules via XML-RPC
+## Querying Automation Rules via JSON-RPC
 
 ```python
 # List all CRM automation rules

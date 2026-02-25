@@ -54,7 +54,7 @@ Stages are configured in **CRM → Configuration → Stages**.
 - Click the stage name in the form view status bar
 - Use the "Won" button (sets probability=100 and closes the opportunity)
 
-### Via XML-RPC
+### Via JSON-RPC
 
 ```python
 # Move opportunity to a stage by stage_id
@@ -99,7 +99,7 @@ stage_id = stages[0]['id']
 - **Expected Closing** (month/quarter)
 - **Company**
 
-### XML-RPC Domain Examples
+### JSON-RPC Domain Examples
 
 ```python
 # All open opportunities
