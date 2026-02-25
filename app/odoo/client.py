@@ -18,6 +18,23 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _normalize_odoo_url(url: str) -> str:
+    """Normalize the Odoo base URL by stripping XML-RPC path suffixes.
+
+    Args:
+        url: Raw Odoo URL from settings.
+
+    Returns:
+        str: Base Odoo URL without ``/xmlrpc/2`` suffixes.
+    """
+    normalized = url.rstrip("/")
+    for suffix in ("/xmlrpc/2/common", "/xmlrpc/2/object", "/xmlrpc/2"):
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)]
+            break
+    return normalized.rstrip("/")
+
+
 class OdooClient:
     """XML-RPC client for Odoo 16.
 
@@ -30,7 +47,7 @@ class OdooClient:
     """
 
     def __init__(self) -> None:
-        self._url = settings.odoo_url.rstrip("/")
+        self._url = _normalize_odoo_url(settings.odoo_url)
         self._db = settings.odoo_db
         self._user = settings.odoo_user
         self._api_key = settings.odoo_api_key

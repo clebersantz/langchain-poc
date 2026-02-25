@@ -112,10 +112,10 @@ client.execute_kw(db, uid, api_key, 'crm.lead', 'write',
 ```python
 import xmlrpc.client
 
-url = "http://localhost:8069"
+url = "http://localhost:8069"  # Base URL (no /xmlrpc/2 suffix)
 db = "odoo"
 username = "admin@example.com"
-api_key = "your_api_key"
+api_key = "your_api_key"  # Preferences → Account Security
 
 common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common")
 uid = common.authenticate(db, username, api_key, {})
