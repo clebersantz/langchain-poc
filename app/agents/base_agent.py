@@ -3,12 +3,7 @@
 from abc import ABC
 from typing import Any
 
-try:
-    from langchain_classic.agents.openai_tools.base import create_openai_tools_agent
-    from langchain_classic.agents.agent import AgentExecutor
-except ImportError:  # pragma: no cover - fallback for older LangChain versions
-    from langchain.agents.openai_tools.base import create_openai_tools_agent
-    from langchain.agents import AgentExecutor
+from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
