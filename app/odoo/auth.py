@@ -12,6 +12,23 @@ logger = get_logger(__name__)
 HTTP_PROBE_TIMEOUT = 5.0
 
 
+def _serialize_xmlrpc_headers(headers: object | None) -> dict[str, str] | None:
+    """Serialize XML-RPC HTTP headers for structured logging.
+
+    Args:
+        headers: Headers from xmlrpc.client.ProtocolError.
+
+    Returns:
+        dict[str, str] | None: Header mapping for logs, if available.
+    """
+    if not headers:
+        return None
+    try:
+        return {key: headers.get(key) for key in headers.keys()}
+    except Exception:
+        return {"raw": str(headers)}
+
+
 def _log_connection_details() -> None:
     """Log the Odoo connection configuration for debugging."""
     logger.info(
@@ -39,6 +56,9 @@ def _probe_http_connection() -> None:
                 url=odoo_client._url,
                 status_code=response.status_code,
                 reason=response.reason_phrase,
+                final_url=str(response.url),
+                redirects=[str(item.url) for item in response.history],
+                server=response.headers.get("server"),
             )
             return
         logger.info(
@@ -46,6 +66,9 @@ def _probe_http_connection() -> None:
             url=odoo_client._url,
             status_code=response.status_code,
             reason=response.reason_phrase,
+            final_url=str(response.url),
+            redirects=[str(item.url) for item in response.history],
+            server=response.headers.get("server"),
         )
     except httpx.HTTPError as exc:
         logger.warning(
@@ -65,6 +88,15 @@ def test_connection() -> bool:
     _probe_http_connection()
     try:
         odoo_client.reset_auth()
+        logger.info(
+            "odoo_auth_attempt",
+            db=odoo_client._db,
+            user=odoo_client._user,
+            common_endpoint=odoo_client._common_endpoint,
+            object_endpoint=odoo_client._models_endpoint,
+            api_key_present=bool(odoo_client._api_key),
+            api_key_length=len(odoo_client._api_key),
+        )
         version = odoo_client.get_version()
         uid = odoo_client.authenticate()
         logger.info(
@@ -76,12 +108,22 @@ def test_connection() -> bool:
     except xmlrpc.client.ProtocolError as exc:
         logger.warning(
             "odoo_connection_failed",
-            error=str(exc),
+            error=str(exc) or "ProtocolError",
+            error_repr=repr(exc),
             url=exc.url,
             status_code=exc.errcode,
             reason=exc.errmsg,
+            headers=_serialize_xmlrpc_headers(exc.headers),
+            common_endpoint=odoo_client._common_endpoint,
+            object_endpoint=odoo_client._models_endpoint,
         )
         return False
     except Exception as exc:
-        logger.warning("odoo_connection_failed", error=str(exc))
+        logger.warning(
+            "odoo_connection_failed",
+            error=str(exc),
+            error_repr=repr(exc),
+            common_endpoint=odoo_client._common_endpoint,
+            object_endpoint=odoo_client._models_endpoint,
+        )
         return False
