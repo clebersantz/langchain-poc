@@ -27,11 +27,9 @@ def _ensure_stubs():
         "langchain_core",
         "langchain_core.tools",
         "langchain",
-        "langchain_classic",
-        "langchain_classic.agents",
-        "langchain_classic.agents.agent",
-        "langchain_classic.agents.openai_tools",
-        "langchain_classic.agents.openai_tools.base",
+        "langchain.agents",
+        "langchain.agents.openai_tools",
+        "langchain.agents.openai_tools.base",
         "langchain_core.prompts",
     ]:
         if pkg not in sys.modules:
@@ -48,18 +46,11 @@ def _ensure_stubs():
     if not hasattr(tool_mod, "BaseTool"):
         tool_mod.BaseTool = object  # type: ignore
 
-    openai_tools_mod = sys.modules.setdefault(
-        "langchain_classic.agents.openai_tools.base",
-        types.ModuleType("langchain_classic.agents.openai_tools.base"),
-    )
-    if not hasattr(openai_tools_mod, "create_openai_tools_agent"):
-        openai_tools_mod.create_openai_tools_agent = MagicMock  # type: ignore
-
-    agent_mod = sys.modules.setdefault(
-        "langchain_classic.agents.agent", types.ModuleType("langchain_classic.agents.agent")
-    )
+    agent_mod = sys.modules.setdefault("langchain.agents", types.ModuleType("langchain.agents"))
     if not hasattr(agent_mod, "AgentExecutor"):
         agent_mod.AgentExecutor = MagicMock  # type: ignore
+    if not hasattr(agent_mod, "create_openai_tools_agent"):
+        agent_mod.create_openai_tools_agent = MagicMock  # type: ignore
 
 
 _ensure_stubs()
@@ -102,7 +93,7 @@ class TestBaseAgentImports:
     """Tests for BaseAgent import expectations."""
 
     def test_base_agent_imports_agentexecutor_from_agents_module(self):
-        """BaseAgent should import AgentExecutor from langchain_classic.agents.agent."""
+        """BaseAgent should import AgentExecutor from langchain.agents."""
         import os
 
         base_agent_path = os.path.join(
@@ -110,7 +101,7 @@ class TestBaseAgentImports:
         )
         with open(base_agent_path) as f:
             source = f.read()
-        assert "langchain_classic.agents.agent" in source
+        assert "langchain.agents" in source
 
 
 class TestKBAgentAnswer:

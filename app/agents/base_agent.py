@@ -3,8 +3,7 @@
 from abc import ABC
 from typing import Any
 
-from langchain_classic.agents.openai_tools.base import create_openai_tools_agent
-from langchain_classic.agents.agent import AgentExecutor
+from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
