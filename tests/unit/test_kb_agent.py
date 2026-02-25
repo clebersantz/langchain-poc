@@ -84,6 +84,21 @@ class TestKBAgentInit:
         assert "PT-BR" in source or "Portuguese" in source
 
 
+class TestBaseAgentImports:
+    """Tests for BaseAgent import expectations."""
+
+    def test_base_agent_imports_agentexecutor_from_agents_module(self):
+        """BaseAgent should import AgentExecutor from langchain.agents.agent."""
+        import os
+
+        base_agent_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "app", "agents", "base_agent.py"
+        )
+        with open(base_agent_path) as f:
+            source = f.read()
+        assert "langchain.agents.agent" in source
+
+
 class TestKBAgentAnswer:
     """Tests for KBAgent.answer() — tested via stub instances."""
 
