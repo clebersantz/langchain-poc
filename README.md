@@ -104,6 +104,7 @@ Open `http://localhost:8000/static/index.html` in your browser.
 > **Odoo XML-RPC Auth:** Set `ODOO_URL` to the base URL (include `http://` or `https://`, no
 > `/xmlrpc/2` suffix). Use an API key in place of the password when calling
 > `common.authenticate(...)` and `execute_kw(...)`.
+> If `/xmlrpc/2` returns `404`, the app will fall back to the legacy `/xmlrpc/` endpoints.
 
 ---
 

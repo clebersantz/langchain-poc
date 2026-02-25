@@ -32,11 +32,20 @@ print(version)  # Should return dict with server_version
 1. **Wrong base URL** — `ODOO_URL` must be the base URL (no `/xmlrpc/2` suffix)
 2. **HTTP ↔ HTTPS redirect** — Use `https://` if the server redirects HTTPS
 3. **Reverse proxy subpath** — Include the subpath if Odoo is hosted under one (e.g. `/odoo`)
+4. **Legacy XML-RPC path** — Some deployments expose `/xmlrpc/common` and `/xmlrpc/object`
+   (no `/2`). If `/xmlrpc/2` returns `404`, try the legacy path.
 
 ```python
 url = "https://mycompany.odoo.com"  # Base URL only
 common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", allow_none=True)
 uid = common.authenticate(db, username, api_key, {})
+```
+
+```python
+# Legacy path fallback (older XML-RPC endpoint)
+root = "https://mycompany.odoo.com/xmlrpc/"
+common = xmlrpc.client.ServerProxy(f"{root}common", allow_none=True)
+uid = common.login(db, username, api_key)
 ```
 
 ---

@@ -28,7 +28,14 @@ def _normalize_odoo_url(url: str) -> str:
         str: Base Odoo URL without ``/xmlrpc/2`` suffixes.
     """
     normalized = url.strip().rstrip("/")
-    for suffix in ("/xmlrpc/2/common", "/xmlrpc/2/object", "/xmlrpc/2"):
+    for suffix in (
+        "/xmlrpc/2/common",
+        "/xmlrpc/2/object",
+        "/xmlrpc/2",
+        "/xmlrpc/common",
+        "/xmlrpc/object",
+        "/xmlrpc",
+    ):
         if normalized.endswith(suffix):
             normalized = normalized[: -len(suffix)]
             break
@@ -69,10 +76,46 @@ class OdooClient:
         self._api_key = settings.odoo_api_key
         self._uid: int | None = None
 
-        self._common_endpoint = f"{self._url}/xmlrpc/2/common"
-        self._models_endpoint = f"{self._url}/xmlrpc/2/object"
+        self._set_endpoints("xmlrpc/2")
+
+    def _set_endpoints(self, base_path: str) -> None:
+        """Set XML-RPC endpoints and rebuild proxies.
+
+        Args:
+            base_path: Base XML-RPC path (e.g. ``"xmlrpc/2"`` or ``"xmlrpc"``).
+        """
+        normalized_path = base_path.strip("/")
+        self._common_endpoint = f"{self._url}/{normalized_path}/common"
+        self._models_endpoint = f"{self._url}/{normalized_path}/object"
         self._common = _build_server_proxy(self._common_endpoint)
         self._models = _build_server_proxy(self._models_endpoint)
+
+    def _uses_legacy_login(self) -> bool:
+        """Return True if legacy /xmlrpc endpoints are in use."""
+        endpoint = getattr(self, "_common_endpoint", "")
+        return endpoint.endswith("/xmlrpc/common")
+
+    def _should_fallback_legacy(self, exc: xmlrpc.client.ProtocolError) -> bool:
+        """Return True if a legacy /xmlrpc retry should be attempted."""
+        endpoint = getattr(self, "_common_endpoint", "")
+        return exc.errcode == 404 and endpoint.endswith("/xmlrpc/2/common")
+
+    def _switch_to_legacy_endpoints(self, exc: xmlrpc.client.ProtocolError) -> None:
+        """Switch to legacy /xmlrpc endpoints and log the fallback."""
+        if self._uses_legacy_login():
+            return
+        legacy_common = f"{self._url}/xmlrpc/common"
+        legacy_models = f"{self._url}/xmlrpc/object"
+        logger.warning(
+            "odoo_xmlrpc_fallback",
+            status_code=exc.errcode,
+            from_common_endpoint=self._common_endpoint,
+            to_common_endpoint=legacy_common,
+            from_object_endpoint=self._models_endpoint,
+            to_object_endpoint=legacy_models,
+        )
+        self._uid = None
+        self._set_endpoints("xmlrpc")
 
     # ------------------------------------------------------------------
     # Authentication
@@ -89,7 +132,17 @@ class OdooClient:
         """
         if self._uid is not None:
             return self._uid
-        uid = self._common.authenticate(self._db, self._user, self._api_key, {})
+        try:
+            if self._uses_legacy_login():
+                uid = self._common.login(self._db, self._user, self._api_key)
+            else:
+                uid = self._common.authenticate(self._db, self._user, self._api_key, {})
+        except xmlrpc.client.ProtocolError as exc:
+            if self._should_fallback_legacy(exc):
+                self._switch_to_legacy_endpoints(exc)
+                uid = self._common.login(self._db, self._user, self._api_key)
+            else:
+                raise
         if not uid:
             raise ValueError("Odoo authentication failed — check ODOO_USER and ODOO_API_KEY")
         self._uid = uid
@@ -108,9 +161,15 @@ class OdooClient:
         """Return the Odoo server version information.
 
         Returns:
-            dict: Server version details from ``/xmlrpc/2/common``.
+            dict: Server version details from ``/xmlrpc/2/common`` (or legacy ``/xmlrpc/common``).
         """
-        return self._common.version()
+        try:
+            return self._common.version()
+        except xmlrpc.client.ProtocolError as exc:
+            if self._should_fallback_legacy(exc):
+                self._switch_to_legacy_endpoints(exc)
+                return self._common.version()
+            raise
 
     # ------------------------------------------------------------------
     # Generic execute
@@ -129,9 +188,18 @@ class OdooClient:
             Any: The return value of the Odoo method.
         """
         uid = self.authenticate()
-        return self._models.execute_kw(
-            self._db, uid, self._api_key, model, method, list(args), kwargs
-        )
+        try:
+            return self._models.execute_kw(
+                self._db, uid, self._api_key, model, method, list(args), kwargs
+            )
+        except xmlrpc.client.ProtocolError as exc:
+            if exc.errcode == 404 and self._models_endpoint.endswith("/xmlrpc/2/object"):
+                self._switch_to_legacy_endpoints(exc)
+                uid = self.authenticate()
+                return self._models.execute_kw(
+                    self._db, uid, self._api_key, model, method, list(args), kwargs
+                )
+            raise
 
     # ------------------------------------------------------------------
     # Convenience helpers
