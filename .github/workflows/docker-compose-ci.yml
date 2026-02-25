@@ -1,0 +1,32 @@
+name: Docker Compose CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  docker-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - name: Ensure external network exists
+        run: |
+          docker network inspect odoo-dev_default >/dev/null 2>&1 || \
+          docker network create odoo-dev_default
+
+      - name: Build docker compose image
+        run: docker compose -f docker/docker-compose.yml build
+
+      - name: Run tests in docker compose image
+        run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
+
+      - name: Cleanup docker compose resources
+        if: always()
+        run: docker compose -f docker/docker-compose.yml down -v
