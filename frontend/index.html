@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>langchain-poc — Odoo CRM Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>🤖 CRM Assistant</h1>
+        <p class="subtitle">Powered by LangChain + Odoo 16</p>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" id="btn-chat">💬 Chat</button>
+        <button class="nav-btn" id="btn-workflows" onclick="window.location='/workflows'">⚙️ Workflows</button>
+      </nav>
+      <div class="sidebar-footer">
+        <small id="session-display"></small>
+        <button class="clear-btn" id="btn-clear">🗑️ Clear chat</button>
+      </div>
+    </aside>
+
+    <!-- Main chat area -->
+    <main class="chat-area">
+      <div class="chat-messages" id="messages"></div>
+
+      <div class="chat-input-bar">
+        <textarea
+          id="user-input"
+          placeholder="Ask about Odoo CRM, leads, pipeline stages, workflows…"
+          rows="1"
+          autofocus
+        ></textarea>
+        <button id="send-btn" title="Send (Enter)">
+          <span id="send-icon">➤</span>
+          <span id="spinner" class="spinner hidden"></span>
+        </button>
+      </div>
+      <p class="hint">Enter to send · Shift+Enter for new line</p>
+    </main>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>
