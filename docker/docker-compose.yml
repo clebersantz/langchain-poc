@@ -1,5 +1,7 @@
 services:
   agent-app:
+    image: langchain-poc
+    container_name: langchain-poc
     build:
       context: ..
       dockerfile: Dockerfile
