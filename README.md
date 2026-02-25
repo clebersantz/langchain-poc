@@ -82,10 +82,10 @@ Open `http://localhost:8000/static/index.html` in your browser.
 
 | Variable | Description | Default |
 |---|---|---|
-| `ODOO_URL` | Odoo instance base URL | `http://localhost:8069` |
+| `ODOO_URL` | Odoo instance base URL (no `/xmlrpc/2` suffix) | `http://localhost:8069` |
 | `ODOO_DB` | Odoo database name | `odoo` |
 | `ODOO_USER` | Odoo login email | `admin@example.com` |
-| `ODOO_API_KEY` | Odoo API Key (Settings → Technical) | — |
+| `ODOO_API_KEY` | Odoo API Key (Preferences → Account Security) | — |
 | `ODOO_VERSION` | Odoo major version | `16` |
 | `OPENAI_API_KEY` | OpenAI API key | — |
 | `SUPERVISOR_MODEL` | LLM for Supervisor Agent | `gpt-4o` |

@@ -61,6 +61,29 @@ class TestOdooClientAuthenticate:
         client._common.authenticate.assert_not_called()
 
 
+class TestOdooClientInit:
+    """Tests for OdooClient initialization."""
+
+    def test_init_strips_xmlrpc_suffixes(self) -> None:
+        """__init__ should normalize XML-RPC suffixes from the base URL."""
+        with (
+            patch("app.odoo.client.settings") as mock_settings,
+            patch("xmlrpc.client.ServerProxy"),
+        ):
+            mock_settings.odoo_url = "http://odoo:8069/xmlrpc/2/common"
+            mock_settings.odoo_db = "odoo"
+            mock_settings.odoo_user = "admin@test.com"
+            mock_settings.odoo_api_key = "test_key"
+
+            from app.odoo.client import OdooClient
+
+            client = OdooClient()
+
+            assert client._url == "http://odoo:8069"
+            assert client._common_endpoint == "http://odoo:8069/xmlrpc/2/common"
+            assert client._models_endpoint == "http://odoo:8069/xmlrpc/2/object"
+
+
 class TestOdooClientSearchRead:
     """Tests for OdooClient.search_read()."""
 

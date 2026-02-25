@@ -10,8 +10,8 @@
 
 *Causes and Solutions*:
 1. **Wrong credentials** — Verify `ODOO_USER` is the login email, not display name
-2. **API Key not enabled** — Go to Settings → Technical → API Keys and create one
-3. **API Key expired** — Generate a new API key in Settings → API Keys
+2. **API Key not enabled** — Go to Preferences → Account Security and create one
+3. **API Key expired** — Generate a new API key in Preferences → Account Security
 4. **Wrong database** — Verify `ODOO_DB` matches the database name in Odoo
 5. **User not active** — Check that the user account is active in Settings → Users
 
