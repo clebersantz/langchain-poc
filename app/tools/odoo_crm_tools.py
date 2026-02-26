@@ -5,6 +5,7 @@ import json
 from langchain_core.tools import tool
 
 from app.odoo.models.crm_lead import (
+    add_note,
     convert_to_opportunity,
     create_lead,
     get_lead,
@@ -130,3 +131,18 @@ def convert_lead_to_opportunity(lead_id: int) -> str:
     """
     ok = convert_to_opportunity(lead_id)
     return json.dumps({"success": bool(ok)})
+
+
+@tool
+def add_note_to_crm_lead(lead_id: int, note: str) -> str:
+    """Post an internal note to a CRM lead/opportunity.
+
+    Args:
+        lead_id: The Odoo record id.
+        note: Note text to post.
+
+    Returns:
+        str: JSON result ``{"message_id": 123}``.
+    """
+    message_id = add_note(lead_id, note)
+    return json.dumps({"message_id": int(message_id)})

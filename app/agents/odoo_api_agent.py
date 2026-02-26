@@ -9,6 +9,7 @@ from app.tools.odoo_activity_tools import (
     schedule_activity,
 )
 from app.tools.odoo_crm_tools import (
+    add_note_to_crm_lead,
     convert_lead_to_opportunity,
     create_crm_lead,
     get_crm_lead,
@@ -69,6 +70,7 @@ class OdooAPIAgent(BaseAgent):
                 get_pipeline_stages,
                 move_lead_to_stage,
                 get_pipeline_summary,
+                add_note_to_crm_lead,
             ],
             system_prompt=_SYSTEM_PROMPT,
         )
