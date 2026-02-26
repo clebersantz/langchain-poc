@@ -18,6 +18,15 @@ from langgraph.graph import END, START, StateGraph
 
 logger = get_logger(__name__)
 
+
+class SupervisorState(TypedDict, total=False):
+    message: str
+    session_id: str
+    intent: str
+    response: str
+    agent_used: str
+
+
 _SYSTEM_PROMPT = """You are a helpful CRM assistant integrated with Odoo 16.
 You can answer questions about CRM concepts, query and update Odoo data, and
 run automated CRM workflows.
@@ -53,15 +62,8 @@ class SupervisorAgent(BaseAgent):
         self._workflow_agent = WorkflowAgent()
         self._graph = self._build_graph()
 
-    class _State(TypedDict, total=False):
-        message: str
-        session_id: str
-        intent: str
-        response: str
-        agent_used: str
-
     def _build_graph(self):
-        graph = StateGraph(self._State)
+        graph = StateGraph(SupervisorState)
         graph.add_node("classify_intent", self._classify_intent)
         graph.add_node("kb_agent", self._run_kb_agent)
         graph.add_node("odoo_api_agent", self._run_odoo_agent)
@@ -84,7 +86,7 @@ class SupervisorAgent(BaseAgent):
         graph.add_edge("persist_history", END)
         return graph.compile()
 
-    def _classify_intent(self, state: _State) -> _State:
+    def _classify_intent(self, state: SupervisorState) -> SupervisorState:
         intent_prompt = (
             "Classify the following user message into exactly one category:\n"
             "KB_QUESTION, CRM_QUERY, WORKFLOW, OTHER\n\n"
@@ -94,7 +96,7 @@ class SupervisorAgent(BaseAgent):
         return {"intent": intent_result.content.strip().upper()}
 
     @staticmethod
-    def _route_intent(state: _State) -> str:
+    def _route_intent(state: SupervisorState) -> str:
         intent = state.get("intent", "")
         if "KB_QUESTION" in intent:
             return "kb_agent"
@@ -104,25 +106,25 @@ class SupervisorAgent(BaseAgent):
             return "workflow_agent"
         return "supervisor"
 
-    def _run_kb_agent(self, state: _State) -> _State:
+    def _run_kb_agent(self, state: SupervisorState) -> SupervisorState:
         return {
             "response": self._kb_agent.answer(state["message"]),
             "agent_used": "kb_agent",
         }
 
-    def _run_odoo_agent(self, state: _State) -> _State:
+    def _run_odoo_agent(self, state: SupervisorState) -> SupervisorState:
         return {
             "response": self._odoo_agent.run(state["message"]),
             "agent_used": "odoo_api_agent",
         }
 
-    def _run_workflow_agent(self, state: _State) -> _State:
+    def _run_workflow_agent(self, state: SupervisorState) -> SupervisorState:
         return {
             "response": self._workflow_agent.invoke(state["message"]),
             "agent_used": "workflow_agent",
         }
 
-    def _run_supervisor(self, state: _State) -> _State:
+    def _run_supervisor(self, state: SupervisorState) -> SupervisorState:
         full_prompt = _SYSTEM_PROMPT + f"\n\nUser: {state['message']}"
         return {
             "response": self._llm.invoke(full_prompt).content,
@@ -130,7 +132,7 @@ class SupervisorAgent(BaseAgent):
         }
 
     @staticmethod
-    def _persist_history(state: _State) -> _State:
+    def _persist_history(state: SupervisorState) -> SupervisorState:
         history = get_session_history(state["session_id"])
         history.add_user_message(state["message"])
         history.add_ai_message(state["response"])
