@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import time
 
 import pytest
@@ -29,10 +28,14 @@ def _wait_for_odoo_ready(client: OdooClient, timeout_s: int = 60) -> None:
     pytest.fail("Odoo test container did not become ready in time")
 
 
-def _extract_json_value(text: str, pattern: str) -> dict | list:
-    match = re.search(pattern, text, re.DOTALL)
-    assert match, f"Agent response did not include JSON payload: {text}"
-    return json.loads(match.group(0))
+def _extract_json_value(text: str, json_type: type[dict] | type[list]) -> dict | list:
+    start_token = "{" if json_type is dict else "["
+    start_index = text.find(start_token)
+    assert start_index != -1, f"Agent response did not include JSON payload: {text}"
+    decoder = json.JSONDecoder()
+    parsed, _ = decoder.raw_decode(text[start_index:])
+    assert isinstance(parsed, json_type), f"Expected {json_type.__name__} JSON payload: {text}"
+    return parsed
 
 
 def test_odoo_agent_connection():
@@ -71,7 +74,7 @@ def test_odoo_agent_read_crm_leads_limit_3():
     agent = OdooAPIAgent()
     response = agent.run("Read CRM leads using max limit 3 items. Return only JSON array.")
 
-    leads = _extract_json_value(response, r"\[\s*.*?\s*\]")
+    leads = _extract_json_value(response, list)
     assert isinstance(leads, list)
     assert len(leads) > 0, "Expected demo CRM leads, but agent returned none."
     assert len(leads) <= 3
@@ -99,7 +102,7 @@ def test_odoo_agent_first_crm_lead_write_note():
         "using add_note_to_crm_lead. Return only JSON object with lead_id and message_id."
     )
 
-    result = _extract_json_value(response, r"\{\s*.*?\s*\}")
+    result = _extract_json_value(response, dict)
     assert isinstance(result, dict)
     lead_id = int(result["lead_id"])
     message_id = int(result["message_id"])
