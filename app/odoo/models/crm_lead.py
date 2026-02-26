@@ -155,3 +155,23 @@ def mark_lost(lead_id: int, lost_reason_id: int | None = None) -> bool:
         return True
     except Exception:
         return odoo_client.write("crm.lead", [lead_id], values)
+
+
+def add_lead_note(lead_id: int, note: str) -> int:
+    """Post an internal note on a CRM lead/opportunity.
+
+    Args:
+        lead_id: Record id.
+        note: Note body to post.
+
+    Returns:
+        int: Created ``mail.message`` id.
+    """
+    return odoo_client.execute(
+        "crm.lead",
+        "message_post",
+        [lead_id],
+        body=note,
+        message_type="comment",
+        subtype_xmlid="mail.mt_note",
+    )

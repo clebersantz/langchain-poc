@@ -80,6 +80,17 @@ class OdooClient:
         self._uid: int | None = None
         self._jsonrpc_endpoint = f"{self._url}/jsonrpc"
 
+    def _decode_json_response(self, response: httpx.Response) -> dict[str, Any]:
+        """Decode a JSON response and raise a typed error if parsing fails."""
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise OdooJSONRPCError(
+                "Invalid JSON-RPC response",
+                http_status=response.status_code,
+                data=response.text,
+            ) from exc
+
     def _jsonrpc_call(self, service: str, method: str, args: list[Any]) -> Any:
         """Call an Odoo JSON-RPC service method.
 
@@ -107,14 +118,7 @@ class OdooClient:
             timeout=JSONRPC_TIMEOUT,
         )
         response.raise_for_status()
-        try:
-            data = response.json()
-        except ValueError as exc:
-            raise OdooJSONRPCError(
-                "Invalid JSON-RPC response",
-                http_status=response.status_code,
-                data=response.text,
-            ) from exc
+        data = self._decode_json_response(response)
         if "error" in data:
             error = data.get("error") or {}
             raise OdooJSONRPCError(

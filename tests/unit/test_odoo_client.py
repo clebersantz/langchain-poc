@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 
@@ -112,3 +113,25 @@ class TestOdooClientCreate:
 
         new_id = client.create("crm.lead", {"name": "Test", "type": "lead"})
         assert new_id == 99
+
+
+class TestOdooClientJSONRPCOnly:
+    """Tests for JSON-RPC-only behavior."""
+
+    def test_jsonrpc_404_raises_error(self) -> None:
+        """Client should raise on /jsonrpc 404 instead of using web endpoints."""
+        from app.odoo.client import OdooClient
+
+        client = OdooClient.__new__(OdooClient)
+        client._url = "http://localhost:8069"
+        client._db = "odoo"
+        client._user = "admin@test.com"
+        client._api_key = "test_key"
+        client._uid = None
+        client._jsonrpc_endpoint = "http://localhost:8069/jsonrpc"
+
+        request = httpx.Request("POST", client._jsonrpc_endpoint)
+        response_404 = httpx.Response(404, request=request)
+        with patch("app.odoo.client.httpx.post", return_value=response_404):
+            with pytest.raises(httpx.HTTPStatusError):
+                client._jsonrpc_call("common", "version", [])

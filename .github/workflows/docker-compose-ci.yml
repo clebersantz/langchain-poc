@@ -9,24 +9,83 @@ on:
 jobs:
   docker-compose:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || vars.OPENAI_API_KEY }}
+      ODOO_URL: http://test-odoo:8069
+      ODOO_DB: odoo_test
+      ODOO_USER: admin
+      ODOO_API_KEY: admin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate OPENAI_API_KEY is configured
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "OPENAI_API_KEY is required for CI AI-agent integration tests."
+            exit 1
+          fi
+
       - name: Prepare env file
         run: cp .env.example .env
-
-      - name: Ensure external network exists
-        run: |
-          docker network inspect odoo-dev_default >/dev/null 2>&1 || \
-          docker network create odoo-dev_default
 
       - name: Build docker compose image
         run: docker compose -f docker/docker-compose.yml build
 
+      - name: Start Odoo test stack
+        if: env.OPENAI_API_KEY != ''
+        run: docker compose -p odoo-dev -f docker/docker-compose.test-odoo.yml up -d
+
+      - name: Wait for Odoo test stack readiness
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app python - <<'PY'
+          import time
+
+          from app.odoo.client import OdooClient
+
+          client = OdooClient()
+          deadline = time.time() + 120
+          while time.time() < deadline:
+              try:
+                  client.get_version()
+                  print("Odoo is ready")
+                  break
+              except Exception:
+                  time.sleep(2)
+          else:
+              raise SystemExit("Odoo test stack did not become ready in time")
+          PY
+
       - name: Run tests in docker compose image
         run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
 
+      - name: Run detailed Odoo connection test script
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app python scripts/test_odoo_connection.py
+
+      - name: Run AI-agent Odoo integration tests (detailed output)
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app pytest -s -vv -rs tests/integration/test_odoo_docker_crm.py
+
       - name: Cleanup docker compose resources
         if: always()
-        run: docker compose -f docker/docker-compose.yml down -v
+        run: |
+          docker compose -f docker/docker-compose.yml down -v
+          docker compose -p odoo-dev -f docker/docker-compose.test-odoo.yml down -v || true
