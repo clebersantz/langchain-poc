@@ -109,6 +109,17 @@ def test_odoo_agent_first_crm_lead_write_note():
     assert lead_id > 0
     assert message_id > 0
 
+    lead_rows = client.search_read(
+        "crm.lead",
+        [["id", "=", lead_id]],
+        ["id", "name", "message_ids"],
+        limit=1,
+    )
+    assert len(lead_rows) == 1
+    lead_message_ids = lead_rows[0].get("message_ids", [])
+    assert isinstance(lead_message_ids, list)
+    assert message_id in lead_message_ids
+
     messages = client.search_read(
         "mail.message",
         [["id", "=", message_id], ["model", "=", "crm.lead"], ["res_id", "=", lead_id]],
