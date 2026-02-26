@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     odoo_db: str = Field("odoo", description="Odoo database name")
     odoo_user: str = Field("admin@example.com", description="Odoo login e-mail")
     odoo_api_key: str = Field("", description="Odoo API Key")
-    odoo_password: str = Field("", description="Odoo user password (optional fallback for web auth)")
     odoo_version: int = Field(16, description="Odoo major version number")
 
     # LLM (OpenAI)
