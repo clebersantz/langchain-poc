@@ -2,7 +2,7 @@
 
 ## System Overview
 
-`langchain-poc` is a multi-agent LangChain application that integrates with an Odoo 16 CRM instance via XML-RPC. It exposes a FastAPI HTTP API and a static chat frontend, enabling users to ask CRM knowledge-base questions, query/update Odoo data, and trigger automated multi-step CRM workflows through a single conversational interface.
+`langchain-poc` is a multi-agent LangChain application that integrates with an Odoo 16 CRM instance via JSON-RPC. It exposes a FastAPI HTTP API and a static chat frontend, enabling users to ask CRM knowledge-base questions, query/update Odoo data, and trigger automated multi-step CRM workflows through a single conversational interface.
 
 ---
 
@@ -17,7 +17,7 @@
 | Embeddings | OpenAI `text-embedding-3-small` |
 | Vector Store | ChromaDB (persistent on disk) |
 | Persistent Memory | SQLite via `SQLChatMessageHistory` |
-| Odoo Transport | XML-RPC (`/xmlrpc/2/object`) |
+| Odoo Transport | JSON-RPC (`/jsonrpc`) |
 | Frontend | Vanilla HTML / JS / CSS |
 | Containerisation | Docker + Docker Compose |
 
@@ -30,7 +30,7 @@
 | Supervisor | GPT-4o | Stateful (SQLite) | Intent detection, routing, conversation history |
 | KB Agent | GPT-4o-mini | Stateless | RAG Q&A over CRM documentation |
 | Workflow Agent | GPT-4o | Stateless (logs to SQLite) | Multi-step CRM workflow execution |
-| Odoo API Agent | GPT-4o-mini | Stateless | XML-RPC CRUD on Odoo 16 |
+| Odoo API Agent | GPT-4o-mini | Stateless | JSON-RPC CRUD on Odoo 16 |
 
 ---
 
@@ -55,7 +55,7 @@ User → POST /chat
 User → POST /chat
   → Supervisor (intent: CRM_QUERY)
     → Odoo API Agent
-      → XML-RPC call to Odoo 16
+      → JSON-RPC call to Odoo 16
       → Format results
     ← Structured data response
   ← Supervisor formats natural-language reply
@@ -114,12 +114,12 @@ Odoo → POST /webhooks/odoo  {event, model, record_id, data}
 
 ---
 
-## Odoo 16 XML-RPC Integration
+## Odoo 16 JSON-RPC Integration
 
 All Odoo calls go through `app/odoo/client.py` (`OdooClient`).
 
-- **Authentication**: `POST /xmlrpc/2/common` → `authenticate(db, user, api_key, {})` → returns `uid`
-- **Operations**: `POST /xmlrpc/2/object` → `execute_kw(db, uid, api_key, model, method, args, kwargs)`
+- **Authentication**: `POST /jsonrpc` → `common.login(db, user, api_key)` → returns `uid`
+- **Operations**: `POST /jsonrpc` → `object.execute_kw(db, uid, api_key, model, method, args, kwargs)`
 - **Key models**: `crm.lead`, `crm.stage`, `crm.team`, `res.partner`, `mail.activity`
 
 ```

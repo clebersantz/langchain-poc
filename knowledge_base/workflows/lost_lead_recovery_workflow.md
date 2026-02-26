@@ -93,7 +93,7 @@ Lost leads can be prioritised for recovery based on:
 2. **Lead has no partner** — cannot check for duplicate opportunity; proceed anyway
 3. **Lost reason is "Spam" or "Duplicate"** — skip; do not re-engage
 4. **Salesperson no longer active** — reassign to team leader
-5. **XML-RPC error on write** — log error, mark lead as failed, continue with next
+5. **JSON-RPC error on write** — log error, mark lead as failed, continue with next
 
 ---
 

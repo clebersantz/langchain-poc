@@ -1,4 +1,4 @@
-"""Odoo API Agent — executes direct Odoo 16 CRUD operations via XML-RPC."""
+"""Odoo API Agent — executes direct Odoo 16 CRUD operations via JSON-RPC."""
 
 from app.agents.base_agent import BaseAgent
 from app.config import settings
@@ -42,7 +42,7 @@ Respond in the same language (English or PT-BR) as the user's instruction.
 
 
 class OdooAPIAgent(BaseAgent):
-    """Stateless agent for all direct Odoo 16 XML-RPC operations.
+    """Stateless agent for all direct Odoo 16 JSON-RPC operations.
 
     Exposes tools for leads, partners, activities, pipeline stages, and teams.
     """

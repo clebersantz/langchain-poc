@@ -1,27 +1,47 @@
-# Odoo 16 CRM XML-RPC API Reference
+# Odoo 16 CRM JSON-RPC API Reference
 
 ## Authentication
 
-Odoo 16 uses XML-RPC for its external API. All operations require a valid `uid` obtained by authentication.
+Odoo 16 uses JSON-RPC for its external API. All operations require a valid `uid` obtained by authentication.
 
 ```python
-import xmlrpc.client
+import requests
 
-url = "http://localhost:8069"  # Base URL (no /xmlrpc/2 suffix)
+url = "http://localhost:8069"  # Base URL (no /jsonrpc suffix)
 db = "odoo"
 username = "admin@example.com"
 api_key = "your_odoo_api_key"  # Preferences → Account Security
 
-# Create proxies
-common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common")
-models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object")
+def json_rpc(service, method, args):
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "call",
+        "params": {"service": service, "method": method, "args": args},
+        "id": 1,
+    }
+    response = requests.post(f"{url}/jsonrpc", json=payload)
+    response.raise_for_status()
+    data = response.json()
+    if "error" in data:
+        raise RuntimeError(data["error"])
+    return data["result"]
+
+class JsonRpcModels:
+    def execute_kw(self, db, uid, api_key, model, method, args, kwargs=None):
+        return json_rpc(
+            "object",
+            "execute_kw",
+            [db, uid, api_key, model, method, args, kwargs or {}],
+        )
+
+models = JsonRpcModels()
 
 # Authenticate — returns uid (integer)
-uid = common.authenticate(db, username, api_key, {})
+uid = json_rpc("common", "login", [db, username, api_key])
 print(f"Authenticated as uid: {uid}")
 
 # Check Odoo version
-version = common.version()
+version = json_rpc("common", "version", [])
 print(f"Odoo version: {version['server_version']}")
 ```
 
@@ -193,15 +213,11 @@ models.execute_kw(db, uid, api_key, 'mail.activity', 'action_feedback',
 ## Error Handling
 
 ```python
-import xmlrpc.client
-
 try:
     result = models.execute_kw(db, uid, api_key, 'crm.lead', 'write',
         [[99999], {'name': 'Test'}])
-except xmlrpc.client.Fault as e:
-    print(f"Odoo error: {e.faultCode} — {e.faultString}")
-    # faultCode 1 = general error
-    # faultCode 2 = access rights error
+except RuntimeError as e:
+    print(f"Odoo JSON-RPC error: {e}")
 except ConnectionError as e:
     print(f"Connection error: {e}")
 ```

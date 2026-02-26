@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI script to test the Odoo XML-RPC connection.
+"""CLI script to test the Odoo JSON-RPC connection.
 
 Usage:
     python scripts/test_odoo_connection.py

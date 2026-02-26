@@ -1,4 +1,4 @@
-"""Odoo XML-RPC integration package."""
+"""Odoo JSON-RPC integration package."""
 
 from app.odoo.client import OdooClient, odoo_client
 

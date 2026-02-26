@@ -2,7 +2,7 @@
 
 ## Project overview
 
-`langchain-poc` is a multi-agent LangChain application that integrates with an Odoo 16 CRM instance via XML-RPC. It exposes a FastAPI HTTP API and a static chat frontend, enabling users to ask CRM knowledge-base questions, query/update Odoo data, and trigger automated CRM workflows through a single conversational interface.
+`langchain-poc` is a multi-agent LangChain application that integrates with an Odoo 16 CRM instance via JSON-RPC. It exposes a FastAPI HTTP API and a static chat frontend, enabling users to ask CRM knowledge-base questions, query/update Odoo data, and trigger automated CRM workflows through a single conversational interface.
 
 ## Technology stack
 
@@ -13,7 +13,7 @@
 - **Embeddings**: OpenAI `text-embedding-3-small`
 - **Vector store**: ChromaDB (persistent on disk at `storage/chroma_db/`)
 - **Persistent memory**: SQLite via `SQLChatMessageHistory` (`storage/sessions.db`)
-- **Odoo transport**: XML-RPC (`/xmlrpc/2/object`)
+- **Odoo transport**: JSON-RPC (`/jsonrpc`)
 - **Frontend**: Vanilla HTML/JS/CSS in `frontend/`, served at `/static`
 - **Containerisation**: Docker + Docker Compose
 
@@ -25,7 +25,7 @@ app/
   config.py        # Pydantic BaseSettings — all config from env / .env
   agents/          # SupervisorAgent, KBAgent, OdooAPIAgent, WorkflowAgent, BaseAgent
   api/routes/      # FastAPI routers: chat, workflows, kb, webhooks
-  odoo/            # OdooClient XML-RPC wrapper (client.py, auth.py)
+  odoo/            # OdooClient JSON-RPC wrapper (client.py, auth.py)
   memory/          # SQLite session history helpers
   tools/           # LangChain tool definitions used by agents
   workflows/       # WorkflowRegistry and BaseWorkflow; concrete workflow classes
@@ -106,5 +106,5 @@ See `.env.example` for the full list and `app/config.py` for defaults.
 
 - No authentication on API endpoints — this is a POC; add API key/OAuth2 before production.
 - Webhook signature verification is a TODO; see `app/api/routes/webhooks.py`.
-- Odoo integration uses XML-RPC (v16); a REST API migration is planned for Odoo 18.
+- Odoo integration uses JSON-RPC (v16); a REST API migration is planned for Odoo 18.
 - The system prompt in `SupervisorAgent` supports both English and PT-BR; keep this bilingual behaviour when modifying prompts.

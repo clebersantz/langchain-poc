@@ -20,7 +20,7 @@ Odoo 16 ships with these default activity types (`mail.activity.type`):
 | To-Do | `todo` | 5 | clock |
 | Upload Document | `upload_mail` | 5 | upload |
 
-### Getting Activity Type IDs via XML-RPC
+### Getting Activity Type IDs via JSON-RPC
 
 ```python
 types = models.execute_kw(db, uid, api_key, 'mail.activity.type', 'search_read',
@@ -38,7 +38,7 @@ types = models.execute_kw(db, uid, api_key, 'mail.activity.type', 'search_read',
 3. Select activity type, assign to a user, set deadline, add summary and note
 4. Click **Schedule**
 
-### Via XML-RPC
+### Via JSON-RPC
 
 ```python
 # Get ir.model id for crm.lead
@@ -67,7 +67,7 @@ activity_id = models.execute_kw(db, uid, api_key, 'mail.activity', 'create', [{
 3. Enter optional feedback
 4. Click **Done**
 
-### Via XML-RPC
+### Via JSON-RPC
 
 ```python
 # Method 1: action_feedback (preferred)

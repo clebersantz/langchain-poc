@@ -2,7 +2,7 @@
 
 **LangChain Multi-Agent Application integrated with Odoo 16 CRM (self-hosted)**
 
-A proof-of-concept demonstrating a 4-agent LangChain architecture that can answer CRM knowledge-base questions, execute Odoo 16 CRUD operations via XML-RPC, and run pre-defined multi-step CRM workflows — all through a simple chat interface.
+A proof-of-concept demonstrating a 4-agent LangChain architecture that can answer CRM knowledge-base questions, execute Odoo 16 CRUD operations via JSON-RPC, and run pre-defined multi-step CRM workflows — all through a simple chat interface.
 
 ---
 
@@ -25,13 +25,13 @@ A proof-of-concept demonstrating a 4-agent LangChain architecture that can answe
                ┌──────────────▼──┐  ┌────────▼──────┐  ┌───▼────────────────┐
                │    KB Agent     │  │  Odoo API     │  │  Workflow Agent    │
                │  RAG over docs  │  │  Agent        │  │  Multi-step CRM    │
-               │  ChromaDB +     │  │  XML-RPC CRUD │  │  workflows         │
+                │  ChromaDB +     │  │  JSON-RPC CRUD│  │  workflows         │
                │  text-embed-3s  │  │  Stateless    │  │  Logs to SQLite    │
                └─────────────────┘  └───────────────┘  └────────────────────┘
                                             │
                          ┌──────────────────▼──────────────────────┐
                          │              Odoo 16 CRM                │
-                         │         XML-RPC  /xmlrpc/2/object       │
+                         │              JSON-RPC /jsonrpc          │
                          └─────────────────────────────────────────┘
 ```
 
@@ -82,7 +82,7 @@ Open `http://localhost:8000/static/index.html` in your browser.
 
 | Variable | Description | Default |
 |---|---|---|
-| `ODOO_URL` | Odoo instance base URL (no `/xmlrpc/2` suffix) | `http://localhost:8069` |
+| `ODOO_URL` | Odoo instance base URL (no `/jsonrpc` suffix) | `http://localhost:8069` |
 | `ODOO_DB` | Odoo database name | `odoo` |
 | `ODOO_USER` | Odoo login email | `admin@example.com` |
 | `ODOO_API_KEY` | Odoo API Key (Preferences → Account Security) | — |
@@ -101,6 +101,12 @@ Open `http://localhost:8000/static/index.html` in your browser.
 
 ---
 
+> **Odoo JSON-RPC Auth:** Set `ODOO_URL` to the base URL (include `http://` or `https://`, no
+> `/jsonrpc` suffix). Use an API key in place of the password when calling
+> `common.login(...)` and `execute_kw(...)` via JSON-RPC.
+
+---
+
 ## Agents
 
 ### 1. Supervisor Agent
@@ -113,7 +119,7 @@ RAG-powered Q&A over Odoo CRM documentation. Uses ChromaDB vector store and `tex
 Executes pre-defined multi-step CRM workflows. Reads workflow steps from the KB Agent and executes them via Odoo API Agent tools. Logs execution to SQLite.
 
 ### 4. Odoo API Agent
-All direct Odoo 16 CRUD via XML-RPC. Exposes LangChain `@tool` functions for leads, partners, activities, pipeline stages, and teams.
+All direct Odoo 16 CRUD via JSON-RPC. Exposes LangChain `@tool` functions for leads, partners, activities, pipeline stages, and teams.
 
 ---
 
