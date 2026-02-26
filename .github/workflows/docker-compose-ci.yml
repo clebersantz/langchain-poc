@@ -9,6 +9,12 @@ on:
 jobs:
   docker-compose:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ODOO_URL: http://test-odoo:8069
+      ODOO_DB: odoo_test
+      ODOO_USER: admin
+      ODOO_API_KEY: admin
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,6 +33,49 @@ jobs:
       - name: Run tests in docker compose image
         run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
 
+      - name: Start Odoo test stack
+        if: env.OPENAI_API_KEY != ''
+        run: docker compose -p odoo-dev -f docker/docker-compose.test-odoo.yml up -d
+
+      - name: Wait for Odoo test stack readiness
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app python - <<'PY'
+          import time
+
+          from app.odoo.client import OdooClient
+
+          client = OdooClient()
+          deadline = time.time() + 120
+          while time.time() < deadline:
+              try:
+                  client.get_version()
+                  print("Odoo is ready")
+                  break
+              except Exception:
+                  time.sleep(2)
+          else:
+              raise SystemExit("Odoo test stack did not become ready in time")
+          PY
+
+      - name: Run AI-agent Odoo integration tests (detailed output)
+        if: env.OPENAI_API_KEY != ''
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app pytest -s -vv tests/integration/test_odoo_docker_crm.py
+
       - name: Cleanup docker compose resources
         if: always()
-        run: docker compose -f docker/docker-compose.yml down -v
+        run: |
+          docker compose -f docker/docker-compose.yml down -v
+          docker compose -p odoo-dev -f docker/docker-compose.test-odoo.yml down -v || true
