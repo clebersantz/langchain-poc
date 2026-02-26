@@ -157,7 +157,7 @@ def mark_lost(lead_id: int, lost_reason_id: int | None = None) -> bool:
         return odoo_client.write("crm.lead", [lead_id], values)
 
 
-def add_note(lead_id: int, note: str) -> int:
+def add_lead_note(lead_id: int, note: str) -> int:
     """Post an internal note on a CRM lead/opportunity.
 
     Args:

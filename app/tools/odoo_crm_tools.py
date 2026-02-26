@@ -5,7 +5,7 @@ import json
 from langchain_core.tools import tool
 
 from app.odoo.models.crm_lead import (
-    add_note,
+    add_lead_note,
     convert_to_opportunity,
     create_lead,
     get_lead,
@@ -144,5 +144,5 @@ def add_note_to_crm_lead(lead_id: int, note: str) -> str:
     Returns:
         str: JSON result ``{"message_id": 123}``.
     """
-    message_id = add_note(lead_id, note)
+    message_id = add_lead_note(lead_id, note)
     return json.dumps({"message_id": int(message_id)})
