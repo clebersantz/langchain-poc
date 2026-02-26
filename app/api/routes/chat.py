@@ -1,5 +1,7 @@
 """Chat API route — POST /chat."""
 
+from threading import Lock
+
 from fastapi import APIRouter
 
 from app.agents.supervisor import SupervisorAgent
@@ -10,13 +12,16 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 _supervisor: SupervisorAgent | None = None
+_supervisor_lock = Lock()
 
 
 def _get_supervisor() -> SupervisorAgent:
     """Return a lazily initialized SupervisorAgent instance."""
     global _supervisor
     if _supervisor is None:
-        _supervisor = SupervisorAgent()
+        with _supervisor_lock:
+            if _supervisor is None:
+                _supervisor = SupervisorAgent()
     return _supervisor
 
 
