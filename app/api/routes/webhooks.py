@@ -1,5 +1,7 @@
 """Webhook API route — POST /webhooks/odoo."""
 
+from threading import Lock
+
 from fastapi import APIRouter, BackgroundTasks
 
 from app.agents.workflow_agent import WorkflowAgent
@@ -9,7 +11,18 @@ from app.utils.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
-_workflow_agent = WorkflowAgent()
+_workflow_agent: WorkflowAgent | None = None
+_workflow_agent_lock = Lock()
+
+
+def _get_workflow_agent() -> WorkflowAgent:
+    """Return a lazily initialized WorkflowAgent instance."""
+    global _workflow_agent
+    if _workflow_agent is None:
+        with _workflow_agent_lock:
+            if _workflow_agent is None:
+                _workflow_agent = WorkflowAgent()
+    return _workflow_agent
 
 # Mapping of Odoo webhook events to workflow names
 _EVENT_WORKFLOW_MAP: dict[str, str] = {
@@ -47,7 +60,7 @@ async def odoo_webhook(
     if workflow_name:
         context = {"lead_id": payload.record_id, **payload.data}
         background_tasks.add_task(
-            _workflow_agent.execute, workflow_name, context, "webhook"
+            _get_workflow_agent().execute, workflow_name, context, "webhook"
         )
 
     return {"status": "accepted", "event": payload.event}
