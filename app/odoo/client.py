@@ -78,6 +78,7 @@ class OdooClient:
         self._db = settings.odoo_db
         self._user = settings.odoo_user
         self._api_key = settings.odoo_api_key
+        self._password = settings.odoo_password
         self._uid: int | None = None
         self._jsonrpc_endpoint = f"{self._url}/jsonrpc"
         self._transport = "jsonrpc"
@@ -127,21 +128,30 @@ class OdooClient:
             return self._post_web_json(f"{self._url}/web/webclient/version_info", {})
 
         if service == "common" and method == "login":
-            result = self._post_web_json(
-                f"{self._url}/web/session/authenticate",
-                {
-                    "db": args[0],
-                    "login": args[1],
-                    "password": args[2],
-                },
-            )
-            try:
-                uid = int(result.get("uid") or 0)
-            except (TypeError, ValueError):
-                uid = 0
-            if uid > 0:
-                self._web_authenticated = True
-            return uid
+            # Web-auth payloads can be malformed in fallback flows; keep this guard defensive.
+            primary_password = args[2] if isinstance(args[2], str) else ""
+            passwords = [primary_password]
+            fallback_password = self._password
+            if fallback_password and fallback_password not in passwords:
+                passwords.append(fallback_password)
+
+            for candidate in passwords:
+                result = self._post_web_json(
+                    f"{self._url}/web/session/authenticate",
+                    {
+                        "db": args[0],
+                        "login": args[1],
+                        "password": candidate,
+                    },
+                )
+                try:
+                    uid = int(result.get("uid") or 0)
+                except (TypeError, ValueError):
+                    uid = 0
+                if uid > 0:
+                    self._web_authenticated = True
+                    return uid
+            return 0
 
         if service == "object" and method == "execute_kw":
             if len(args) != EXECUTE_KW_ARG_COUNT:
@@ -154,7 +164,9 @@ class OdooClient:
                 login_uid = self._web_service_call("common", "login", [db, self._user, self._api_key])
                 if not login_uid:
                     logger.warning("odoo_web_authentication_failed", db=db, user=self._user)
-                    raise ValueError("Odoo authentication failed — check ODOO_USER and ODOO_API_KEY")
+                    raise ValueError(
+                        "Odoo authentication failed — check ODOO_USER, ODOO_API_KEY, and ODOO_PASSWORD"
+                    )
             return self._post_web_json(
                 f"{self._url}/web/dataset/call_kw/{model}/{model_method}",
                 {
@@ -249,7 +261,9 @@ class OdooClient:
             [self._db, self._user, self._api_key],
         )
         if not uid:
-            raise ValueError("Odoo authentication failed — check ODOO_USER and ODOO_API_KEY")
+            raise ValueError(
+                "Odoo authentication failed — check ODOO_USER, ODOO_API_KEY, and ODOO_PASSWORD"
+            )
         self._uid = uid
         logger.info("odoo_authenticated", uid=uid)
         return uid

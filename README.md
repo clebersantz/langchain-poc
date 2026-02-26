@@ -86,6 +86,7 @@ Open `http://localhost:8000/static/index.html` in your browser.
 | `ODOO_DB` | Odoo database name | `odoo` |
 | `ODOO_USER` | Odoo login email | `admin@example.com` |
 | `ODOO_API_KEY` | Odoo API Key (Preferences → Account Security) | — |
+| `ODOO_PASSWORD` | Odoo login password (optional fallback for web auth) | — |
 | `ODOO_VERSION` | Odoo major version | `16` |
 | `OPENAI_API_KEY` | OpenAI API key | — |
 | `SUPERVISOR_MODEL` | LLM for Supervisor Agent | `gpt-4o` |
@@ -103,7 +104,8 @@ Open `http://localhost:8000/static/index.html` in your browser.
 
 > **Odoo JSON-RPC Auth:** Set `ODOO_URL` to the base URL (include `http://` or `https://`, no
 > `/jsonrpc` suffix). Use an API key in place of the password when calling
-> `common.login(...)` and `execute_kw(...)` via JSON-RPC.
+> `common.login(...)` and `execute_kw(...)` via JSON-RPC. If `/jsonrpc` is unavailable and the
+> app falls back to `/web/session/authenticate`, set `ODOO_PASSWORD` if API key login is denied.
 
 ---
 

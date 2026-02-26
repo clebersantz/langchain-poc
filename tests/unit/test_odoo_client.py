@@ -18,6 +18,7 @@ class TestOdooClientAuthenticate:
         client._db = "odoo"
         client._user = "admin@test.com"
         client._api_key = "test_key"
+        client._password = ""
         client._uid = None
         client._jsonrpc_call = MagicMock(return_value=42)
 
@@ -127,6 +128,7 @@ class TestOdooClientWebFallback:
         client._db = "odoo"
         client._user = "admin@test.com"
         client._api_key = "test_key"
+        client._password = ""
         client._uid = None
         client._jsonrpc_endpoint = "http://localhost:8069/jsonrpc"
         client._transport = "jsonrpc"
@@ -177,3 +179,31 @@ class TestOdooClientWebFallback:
 
         assert result == [{"id": 1, "name": "Lead A"}]
         assert mock_post.call_args.args[0].endswith("/web/dataset/call_kw/crm.lead/search_read")
+
+    def test_web_login_retries_with_odoo_password_when_api_key_fails(self) -> None:
+        """Web login should retry with ODOO_PASSWORD fallback when API key is denied."""
+        from app.odoo.client import OdooClient
+
+        client = OdooClient.__new__(OdooClient)
+        client._url = "http://localhost:8069"
+        client._db = "odoo"
+        client._user = "admin@test.com"
+        client._api_key = "bad_api_key"
+        client._password = "good_password"
+        client._uid = None
+        client._jsonrpc_endpoint = "http://localhost:8069/jsonrpc"
+        client._transport = "web"
+        client._web_authenticated = False
+
+        with patch.object(
+            client,
+            "_post_web_json",
+            side_effect=[{"uid": False}, {"uid": 9}],
+        ) as mock_post_web_json:
+            uid = client._jsonrpc_call("common", "login", ["odoo", "admin@test.com", "bad_api_key"])
+
+        assert uid == 9
+        assert client._web_authenticated is True
+        assert mock_post_web_json.call_count == 2
+        assert mock_post_web_json.call_args_list[0].args[1]["password"] == "bad_api_key"
+        assert mock_post_web_json.call_args_list[1].args[1]["password"] == "good_password"
