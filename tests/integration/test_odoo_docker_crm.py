@@ -97,9 +97,11 @@ def test_odoo_agent_first_crm_lead_write_note():
     _wait_for_odoo_ready(client)
     agent = OdooAPIAgent()
     response = agent.run(
-        "Get the first CRM lead. If there is no lead, create one minimal lead. "
+        "Get the first CRM lead. "
+        "If there is no lead, create one minimal lead. "
         f"Then post an internal note with this exact text: {NOTE_TEXT} "
-        "using add_note_to_crm_lead. Return only JSON object with lead_id and message_id."
+        "using add_note_to_crm_lead. After posting, reread that CRM lead and verify the posted "
+        "note matches. Return only JSON object with lead_id and message_id."
     )
 
     result = _extract_json_value(response, dict)
