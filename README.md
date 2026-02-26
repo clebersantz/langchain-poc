@@ -186,6 +186,10 @@ docker compose -f docker/docker-compose.yml exec agent-app python scripts/ingest
 docker compose -f docker/docker-compose.test-odoo.yml up -d
 ```
 
+For host access, open `http://localhost:8000/static/index.html`.
+If you start `agent-app` with `docker compose run`, ports are not published by default; use
+`docker compose -f docker/docker-compose.yml run --service-ports agent-app`.
+
 Test Odoo credentials in this setup:
 - User: `admin`
 - Password: `admin`
