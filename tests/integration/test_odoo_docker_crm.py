@@ -74,7 +74,10 @@ def test_docker_odoo_crm_first_lead_write_note():
     _wait_for_odoo_ready(client)
     leads = client.search_read("crm.lead", [], ["id", "name"], limit=1)
     if not leads:
-        lead_id = client.create("crm.lead", {"name": "CRM Bot Automation Lead", "type": "lead"})
+        lead_id = client.create(
+            "crm.lead",
+            {"name": f"CRM Bot Automation Lead {int(time.time())}", "type": "lead"},
+        )
     else:
         lead_id = leads[0]["id"]
 
