@@ -17,6 +17,7 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 JSONRPC_TIMEOUT = 10.0
+EXECUTE_KW_ARG_COUNT = 7
 
 
 class OdooJSONRPCError(RuntimeError):
@@ -79,6 +80,95 @@ class OdooClient:
         self._api_key = settings.odoo_api_key
         self._uid: int | None = None
         self._jsonrpc_endpoint = f"{self._url}/jsonrpc"
+        self._transport = "jsonrpc"
+        self._web_authenticated = False
+
+    def _decode_json_response(self, response: httpx.Response) -> dict[str, Any]:
+        """Decode a JSON response and raise a typed error if parsing fails."""
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise OdooJSONRPCError(
+                "Invalid JSON-RPC response",
+                http_status=response.status_code,
+                data=response.text,
+            ) from exc
+
+    def _post_web_json(self, endpoint: str, params: dict[str, Any]) -> Any:
+        """Call a web JSON endpoint that returns a JSON-RPC-like envelope."""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "call",
+            "params": params,
+            "id": uuid.uuid4().hex,
+        }
+        response = httpx.post(endpoint, json=payload, timeout=JSONRPC_TIMEOUT)
+        response.raise_for_status()
+        data = self._decode_json_response(response)
+        if "error" in data:
+            error = data.get("error") or {}
+            raise OdooJSONRPCError(
+                error.get("message", "JSON-RPC error"),
+                code=error.get("code"),
+                data=error.get("data"),
+                http_status=response.status_code,
+            )
+        if "result" not in data:
+            raise OdooJSONRPCError(
+                "Malformed JSON-RPC response",
+                http_status=response.status_code,
+                data=data,
+            )
+        return data["result"]
+
+    def _web_service_call(self, service: str, method: str, args: list[Any]) -> Any:
+        """Fallback RPC transport via Odoo web JSON controllers."""
+        if service == "common" and method == "version":
+            return self._post_web_json(f"{self._url}/web/webclient/version_info", {})
+
+        if service == "common" and method == "login":
+            result = self._post_web_json(
+                f"{self._url}/web/session/authenticate",
+                {
+                    "db": args[0],
+                    "login": args[1],
+                    "password": args[2],
+                },
+            )
+            try:
+                uid = int(result.get("uid") or 0)
+            except (TypeError, ValueError):
+                uid = 0
+            if uid > 0:
+                self._web_authenticated = True
+            return uid
+
+        if service == "object" and method == "execute_kw":
+            if len(args) != EXECUTE_KW_ARG_COUNT:
+                raise OdooJSONRPCError(
+                    f"execute_kw requires exactly {EXECUTE_KW_ARG_COUNT} arguments, got {len(args)}",
+                    data={"args_length": len(args)},
+                )
+            db, _uid_arg, _password_arg, model, model_method, method_args, method_kwargs = args
+            if not self._web_authenticated:
+                login_uid = self._web_service_call("common", "login", [db, self._user, self._api_key])
+                if not login_uid:
+                    logger.warning("odoo_web_authentication_failed", db=db, user=self._user)
+                    raise ValueError("Odoo authentication failed — check ODOO_USER and ODOO_API_KEY")
+            return self._post_web_json(
+                f"{self._url}/web/dataset/call_kw/{model}/{model_method}",
+                {
+                    "model": model,
+                    "method": model_method,
+                    "args": method_args,
+                    "kwargs": method_kwargs,
+                },
+            )
+
+        raise OdooJSONRPCError(
+            f"Unsupported Odoo service/method: {service}.{method}. "
+            "Supported in web mode: common.version, common.login, object.execute_kw"
+        )
 
     def _jsonrpc_call(self, service: str, method: str, args: list[Any]) -> Any:
         """Call an Odoo JSON-RPC service method.
@@ -95,26 +185,33 @@ class OdooClient:
             OdooJSONRPCError: If the response contains a JSON-RPC error.
             httpx.HTTPError: If the HTTP request fails.
         """
+        if self._transport == "web":
+            return self._web_service_call(service, method, args)
+
         payload = {
             "jsonrpc": "2.0",
             "method": "call",
             "params": {"service": service, "method": method, "args": args},
             "id": uuid.uuid4().hex,
         }
-        response = httpx.post(
-            self._jsonrpc_endpoint,
-            json=payload,
-            timeout=JSONRPC_TIMEOUT,
-        )
-        response.raise_for_status()
         try:
-            data = response.json()
-        except ValueError as exc:
-            raise OdooJSONRPCError(
-                "Invalid JSON-RPC response",
-                http_status=response.status_code,
-                data=response.text,
-            ) from exc
+            response = httpx.post(
+                self._jsonrpc_endpoint,
+                json=payload,
+                timeout=JSONRPC_TIMEOUT,
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                self._transport = "web"
+                logger.warning(
+                    "odoo_jsonrpc_404_fallback_to_web",
+                    jsonrpc_endpoint=self._jsonrpc_endpoint,
+                    fallback_endpoint=f"{self._url}/web/session/authenticate",
+                )
+                return self._web_service_call(service, method, args)
+            raise
+        data = self._decode_json_response(response)
         if "error" in data:
             error = data.get("error") or {}
             raise OdooJSONRPCError(
@@ -160,6 +257,7 @@ class OdooClient:
     def reset_auth(self) -> None:
         """Clear the cached uid so the next call re-authenticates."""
         self._uid = None
+        self._web_authenticated = False
 
     # ------------------------------------------------------------------
     # Metadata
