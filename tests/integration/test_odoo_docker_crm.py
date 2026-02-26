@@ -72,7 +72,9 @@ def test_odoo_agent_read_crm_leads_limit_3():
 
     _wait_for_odoo_ready(OdooClient())
     agent = OdooAPIAgent()
-    response = agent.run("Read CRM leads using max limit 3 items. Return only JSON array.")
+    response = agent.run(
+        "Call search_crm_leads with query '' and limit 3. Return only JSON array."
+    )
 
     leads = _extract_json_value(response, list)
     assert isinstance(leads, list)
