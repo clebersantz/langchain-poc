@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+from app.agents.supervisor import SupervisorAgent
 
 
 class TestSupervisorRouting:
@@ -9,34 +10,26 @@ class TestSupervisorRouting:
 
     def _make_supervisor(self):
         """Build a SupervisorAgent with all sub-agents mocked."""
-        with patch("app.agents.supervisor.ChatOpenAI"), \
-             patch("app.agents.supervisor.KBAgent"), \
-             patch("app.agents.supervisor.OdooAPIAgent"), \
-             patch("app.agents.supervisor.WorkflowAgent"), \
-             patch("app.agents.supervisor.get_session_history") as mock_history:
+        supervisor = SupervisorAgent.__new__(SupervisorAgent)
+        supervisor.name = "supervisor"
+        supervisor._uid = None
 
-            from app.agents.supervisor import SupervisorAgent
+        # Mock LLM
+        mock_llm = MagicMock()
+        supervisor._llm = mock_llm
 
-            supervisor = SupervisorAgent.__new__(SupervisorAgent)
-            supervisor.name = "supervisor"
-            supervisor._uid = None
+        # Mock sub-agents
+        supervisor._kb_agent = MagicMock()
+        supervisor._odoo_agent = MagicMock()
+        supervisor._workflow_agent = MagicMock()
 
-            # Mock LLM
-            mock_llm = MagicMock()
-            supervisor._llm = mock_llm
+        supervisor._graph = supervisor._build_graph()
 
-            # Mock sub-agents
-            supervisor._kb_agent = MagicMock()
-            supervisor._odoo_agent = MagicMock()
-            supervisor._workflow_agent = MagicMock()
+        # Mock history
+        mock_hist = MagicMock()
+        mock_hist.messages = []
 
-            # Mock history
-            mock_hist = MagicMock()
-            mock_hist.messages = []
-            mock_history.return_value = mock_hist
-            supervisor._get_history = mock_history
-
-            return supervisor, mock_llm, mock_hist
+        return supervisor, mock_llm, mock_hist
 
     def test_kb_question_routes_to_kb_agent(self):
         """Messages classified as KB_QUESTION should be handled by KBAgent."""

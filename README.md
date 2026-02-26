@@ -181,7 +181,14 @@ docker compose -f docker/docker-compose.yml up -d
 
 # Ingest knowledge base inside the container
 docker compose -f docker/docker-compose.yml exec agent-app python scripts/ingest_knowledge_base.py
+
+# Start a test-only Odoo 16 + CRM stack
+docker compose -f docker/docker-compose.test-odoo.yml up -d
 ```
+
+Test Odoo credentials in this setup:
+- User: `admin`
+- Password: `admin`
 
 ---
 
@@ -204,5 +211,5 @@ pytest tests/integration/
 
 ---
 
-> **Note**: No Odoo Docker setup is included in this repo — it is handled separately.
+> **Note**: A test-only Odoo 16 + CRM setup is available at `docker/docker-compose.test-odoo.yml`.
 > **Note**: API endpoints have no authentication (POC only). Add auth before production use.
