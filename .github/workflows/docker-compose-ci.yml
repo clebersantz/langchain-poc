@@ -19,6 +19,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate OPENAI_API_KEY is configured
+        if: ${{ secrets.OPENAI_API_KEY == '' }}
+        run: |
+          echo "OPENAI_API_KEY is required for CI AI-agent integration tests."
+          exit 1
+
       - name: Prepare env file
         run: cp .env.example .env
 
