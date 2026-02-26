@@ -43,15 +43,20 @@ def test_odoo_agent_connection():
             "to run AI-agent Odoo integration checks."
         )
 
-    _wait_for_odoo_ready(OdooClient())
+    client = OdooClient()
+    _wait_for_odoo_ready(client)
+    version_info = client.get_version()
+    server_version = str(version_info.get("server_version", ""))
     agent = OdooAPIAgent()
     response = agent.run(
         "Use your Odoo CRM tools to verify connectivity. "
         "Call search_crm_leads with query '' and limit 1, then reply exactly CONNECTED."
     )
 
+    print(f"Odoo connection successful. Version: {server_version}")
     assert isinstance(response, str)
     assert "CONNECTED" in response.upper()
+    assert server_version.startswith("16.0")
 
 
 def test_odoo_agent_read_crm_leads_limit_3():
@@ -64,16 +69,16 @@ def test_odoo_agent_read_crm_leads_limit_3():
 
     _wait_for_odoo_ready(OdooClient())
     agent = OdooAPIAgent()
-    response = agent.run(
-        "Read CRM leads using max limit 3 items. "
-        "Return only the JSON array from the tool output."
-    )
+    response = agent.run("Read CRM leads using max limit 3 items. Return only JSON array.")
 
     leads = _extract_json_value(response, r"\[\s*.*?\s*\]")
     assert isinstance(leads, list)
     assert len(leads) <= 3
-    if leads:
-        assert "id" in leads[0]
+    lead_names = [str(lead.get("name", "")).strip() for lead in leads]
+    print(f"CRM leads read ({len(leads)}): {lead_names}")
+    for lead in leads:
+        assert "id" in lead
+        assert "name" in lead
 
 
 def test_odoo_agent_first_crm_lead_write_note():
@@ -84,7 +89,8 @@ def test_odoo_agent_first_crm_lead_write_note():
             "to run AI-agent Odoo integration checks."
         )
 
-    _wait_for_odoo_ready(OdooClient())
+    client = OdooClient()
+    _wait_for_odoo_ready(client)
     agent = OdooAPIAgent()
     response = agent.run(
         "Get the first CRM lead. If there is no lead, create one minimal lead. "
@@ -94,5 +100,18 @@ def test_odoo_agent_first_crm_lead_write_note():
 
     result = _extract_json_value(response, r"\{\s*.*?\s*\}")
     assert isinstance(result, dict)
-    assert int(result["lead_id"]) > 0
-    assert int(result["message_id"]) > 0
+    lead_id = int(result["lead_id"])
+    message_id = int(result["message_id"])
+    assert lead_id > 0
+    assert message_id > 0
+
+    messages = client.search_read(
+        "mail.message",
+        [["id", "=", message_id], ["model", "=", "crm.lead"], ["res_id", "=", lead_id]],
+        ["id", "body"],
+        limit=1,
+    )
+    assert len(messages) == 1
+    note_body = str(messages[0].get("body", ""))
+    print(f"Posted note for lead {lead_id}: {note_body}")
+    assert NOTE_TEXT in note_body
