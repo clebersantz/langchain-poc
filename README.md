@@ -213,6 +213,12 @@ pytest tests/unit/
 pytest tests/integration/
 ```
 
+To validate host access to the Dockerized chat endpoint in CI, run:
+
+```bash
+AGENT_CHAT_URL=http://127.0.0.1:8000/chat pytest tests/integration/test_agent_chat_docker_access.py
+```
+
 ---
 
 ## Contributing
