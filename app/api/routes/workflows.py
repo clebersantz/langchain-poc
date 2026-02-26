@@ -2,16 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 
-from app.agents.workflow_agent import WorkflowAgent
 from app.api.schemas import WorkflowRunRequest, WorkflowRunResponse
 from app.workflows.registry import workflow_registry
 from app.utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
-
-_workflow_agent = WorkflowAgent()
-
 
 @router.get("")
 async def list_workflows() -> list[dict]:

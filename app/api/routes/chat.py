@@ -9,7 +9,15 @@ from app.utils.logger import get_logger
 router = APIRouter()
 logger = get_logger(__name__)
 
-_supervisor = SupervisorAgent()
+_supervisor: SupervisorAgent | None = None
+
+
+def _get_supervisor() -> SupervisorAgent:
+    """Return a lazily initialized SupervisorAgent instance."""
+    global _supervisor
+    if _supervisor is None:
+        _supervisor = SupervisorAgent()
+    return _supervisor
 
 
 @router.post("", response_model=ChatResponse)
@@ -27,7 +35,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             ``agent_used``.
     """
     logger.info("chat_request", session_id=request.session_id)
-    response, agent_used = _supervisor.route(request.message, request.session_id)
+    response, agent_used = _get_supervisor().route(request.message, request.session_id)
     return ChatResponse(
         session_id=request.session_id,
         response=response,
