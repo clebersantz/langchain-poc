@@ -29,16 +29,8 @@ jobs:
       - name: Prepare env file
         run: cp .env.example .env
 
-      - name: Ensure external network exists
-        run: |
-          docker network inspect odoo-dev_default >/dev/null 2>&1 || \
-          docker network create odoo-dev_default
-
       - name: Build docker compose image
         run: docker compose -f docker/docker-compose.yml build
-
-      - name: Run tests in docker compose image
-        run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
 
       - name: Start Odoo test stack
         if: env.OPENAI_API_KEY != ''
@@ -69,6 +61,18 @@ jobs:
           else:
               raise SystemExit("Odoo test stack did not become ready in time")
           PY
+
+      - name: Run tests in docker compose image
+        run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
+
+      - name: Run detailed Odoo connection test script
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm --no-deps \
+            -e ODOO_URL="${ODOO_URL}" \
+            -e ODOO_DB="${ODOO_DB}" \
+            -e ODOO_USER="${ODOO_USER}" \
+            -e ODOO_API_KEY="${ODOO_API_KEY}" \
+            agent-app python scripts/test_odoo_connection.py
 
       - name: Run AI-agent Odoo integration tests (detailed output)
         run: |
