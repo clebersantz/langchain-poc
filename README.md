@@ -190,6 +190,16 @@ Test Odoo credentials in this setup:
 - User: `admin`
 - Password: `admin`
 
+Run a CRM connectivity check against the Docker Odoo test stack:
+
+```bash
+ODOO_URL=http://localhost:8069 \
+ODOO_DB=odoo_test \
+ODOO_USER=admin \
+ODOO_API_KEY=admin \
+pytest tests/integration/test_odoo_docker_crm.py
+```
+
 ---
 
 ## Running Tests

@@ -70,3 +70,17 @@ class TestSupervisorRouting:
             )
             assert agent_used == "workflow_agent"
             supervisor._workflow_agent.invoke.assert_called_once()
+
+    def test_other_routes_to_supervisor_agent(self):
+        """Messages classified as OTHER should be handled directly by Supervisor."""
+        supervisor, mock_llm, mock_hist = self._make_supervisor()
+        with patch("app.agents.supervisor.get_session_history", return_value=mock_hist):
+            mock_llm.invoke.side_effect = [
+                MagicMock(content="OTHER"),
+                MagicMock(content="Supervisor response"),
+            ]
+
+            response, agent_used = supervisor.route("Olá, tudo bem?", "session-999")
+            assert response == "Supervisor response"
+            assert agent_used == "supervisor"
+            assert mock_llm.invoke.call_count == 2
