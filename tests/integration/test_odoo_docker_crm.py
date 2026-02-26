@@ -28,13 +28,13 @@ def _wait_for_odoo_ready(client: OdooClient, timeout_s: int = 60) -> None:
     pytest.fail("Odoo test container did not become ready in time")
 
 
-def _extract_json_value(text: str, json_type: type[dict] | type[list]) -> dict | list:
-    start_token = "{" if json_type is dict else "["
+def _extract_json_value(text: str, expected_type: type[dict] | type[list]) -> dict | list:
+    start_token = "{" if expected_type is dict else "["
     start_index = text.find(start_token)
     assert start_index != -1, f"Agent response did not include JSON payload: {text}"
     decoder = json.JSONDecoder()
     parsed, _ = decoder.raw_decode(text[start_index:])
-    assert isinstance(parsed, json_type), f"Expected {json_type.__name__} JSON payload: {text}"
+    assert isinstance(parsed, expected_type), f"Expected {expected_type.__name__} JSON payload: {text}"
     return parsed
 
 
