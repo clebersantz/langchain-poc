@@ -64,7 +64,6 @@ jobs:
           PY
 
       - name: Run AI-agent Odoo integration tests (detailed output)
-        if: env.OPENAI_API_KEY != ''
         run: |
           docker compose -f docker/docker-compose.yml run --rm --no-deps \
             -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
@@ -72,7 +71,7 @@ jobs:
             -e ODOO_DB="${ODOO_DB}" \
             -e ODOO_USER="${ODOO_USER}" \
             -e ODOO_API_KEY="${ODOO_API_KEY}" \
-            agent-app pytest -s -vv tests/integration/test_odoo_docker_crm.py
+            agent-app pytest -s -vv -rs tests/integration/test_odoo_docker_crm.py
 
       - name: Cleanup docker compose resources
         if: always()
