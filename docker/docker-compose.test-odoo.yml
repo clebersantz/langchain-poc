@@ -31,7 +31,6 @@ services:
         "odoo",
         "--database=odoo_test",
         "--init=crm",
-        "--without-demo=all",
       ]
     volumes:
       - test_odoo_data:/var/lib/odoo

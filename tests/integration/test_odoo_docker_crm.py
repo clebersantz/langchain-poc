@@ -73,6 +73,7 @@ def test_odoo_agent_read_crm_leads_limit_3():
 
     leads = _extract_json_value(response, r"\[\s*.*?\s*\]")
     assert isinstance(leads, list)
+    assert len(leads) > 0, "Expected demo CRM leads, but agent returned none."
     assert len(leads) <= 3
     lead_names = [str(lead.get("name", "")).strip() for lead in leads]
     print(f"CRM leads read ({len(leads)}): {lead_names}")
