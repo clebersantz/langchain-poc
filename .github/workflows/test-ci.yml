@@ -84,10 +84,14 @@ jobs:
           while time.time() < deadline:
               try:
                   with urllib.request.urlopen(url, timeout=5) as response:
+                      if response.status != 200:
+                          last_error = f"unexpected response: status={response.status}"
+                          time.sleep(2)
+                          continue
                       body = response.read().decode("utf-8", errors="ignore")
-                  if response.status == 200 and "CRM Assistant" in body:
+                  if "CRM Assistant" in body:
                       raise SystemExit(0)
-                  last_error = f"unexpected response: status={response.status}"
+                  last_error = "expected marker not found in response body"
               except Exception as exc:
                   last_error = str(exc)
               time.sleep(2)
