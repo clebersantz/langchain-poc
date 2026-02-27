@@ -13,6 +13,7 @@ from app.tools.odoo_crm_tools import (
     convert_lead_to_opportunity,
     create_crm_lead,
     get_crm_lead,
+    get_odoo_version,
     mark_lead_lost,
     mark_lead_won,
     search_crm_leads,
@@ -53,6 +54,7 @@ class OdooAPIAgent(BaseAgent):
             name="odoo_api_agent",
             model=settings.odoo_api_agent_model,
             tools=[
+                get_odoo_version,
                 search_crm_leads,
                 get_crm_lead,
                 create_crm_lead,
