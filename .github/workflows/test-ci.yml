@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || vars.OPENAI_API_KEY }}
-      ODOO_URL: http://test-odoo:8069
+      ODOO_URL: http://host.docker.internal:8069
       ODOO_DB: odoo_test
       ODOO_USER: admin
       ODOO_API_KEY: admin

@@ -176,18 +176,23 @@ A simple static HTML/JS chat UI served at `/static/index.html`. No JS framework 
 ## Docker
 
 ```bash
-# Start the application and ChromaDB
+# Start the application and ChromaDB (no external network required)
 docker compose -f docker/docker-compose.yml up -d
 
 # Ingest knowledge base inside the container
 docker compose -f docker/docker-compose.yml exec agent-app python scripts/ingest_knowledge_base.py
 
-# Start a test-only Odoo 16 + CRM stack
+# Start a test-only Odoo 16 + CRM stack (optional — needed only for Odoo features)
 docker compose -f docker/docker-compose.test-odoo.yml up -d
 ```
 
 For host access, open `http://localhost:8000/static/index.html`.
 The app is published directly by `agent-app` as `127.0.0.1:8000 -> agent-app:8000`.
+
+> **Note**: `agent-app` runs standalone — no external Docker network is required.
+> When running the optional Odoo test stack alongside `agent-app`, set
+> `ODOO_URL=http://host.docker.internal:8069` in your `.env` so the container
+> can reach Odoo through the host-published port (works on Linux, macOS, and Windows).
 
 Test Odoo credentials in this setup:
 - User: `admin`
