@@ -74,6 +74,7 @@ jobs:
       - name: Verify static frontend from inside agent-app
         run: |
           set -euo pipefail
+          echo "Starting inside-container static check: http://127.0.0.1:8000/static/index.html"
           docker compose -f docker/docker-compose.yml exec -T agent-app python - <<'PY'
           import time
           import urllib.request
@@ -81,35 +82,50 @@ jobs:
           url = "http://127.0.0.1:8000/static/index.html"
           deadline = time.time() + 60
           last_error = ""
+          attempt = 0
           while time.time() < deadline:
+              attempt += 1
               try:
                   with urllib.request.urlopen(url, timeout=5) as response:
                       if response.status != 200:
                           last_error = f"unexpected response: status={response.status}"
+                          print(f"Inside check attempt {attempt}: {last_error}")
                           time.sleep(2)
                           continue
                       body = response.read().decode("utf-8", errors="ignore")
                   if "CRM Assistant" in body:
+                      print(f"Inside check PASSED on attempt {attempt}: status=200 marker=found")
                       raise SystemExit(0)
                   last_error = "expected marker not found in response body"
+                  print(f"Inside check attempt {attempt}: {last_error}")
               except Exception as exc:
                   last_error = str(exc)
+                  print(f"Inside check attempt {attempt}: error={last_error}")
               time.sleep(2)
-          raise SystemExit(f"Unable to access {url} from inside agent-app: {last_error}")
+          raise SystemExit(
+              f"Inside check FAILED after {attempt} attempts: unable to access {url}: {last_error}"
+          )
           PY
 
       - name: Verify host access to static frontend
         run: |
           set -euo pipefail
           url="http://localhost:8000/static/index.html"
-          for _ in $(seq 1 30); do
+          echo "Starting host-side static check: ${url}"
+          for attempt in $(seq 1 30); do
             status_code="$(curl -s --connect-timeout 2 --max-time 5 -o /tmp/static-index.html -w '%{http_code}' "${url}" || printf '000')"
-            if [ "${status_code}" = "200" ] && grep -q "CRM Assistant" /tmp/static-index.html; then
+            marker_present="no"
+            if grep -q "CRM Assistant" /tmp/static-index.html; then
+              marker_present="yes"
+            fi
+            echo "Host check attempt ${attempt}: status=${status_code} marker=${marker_present}"
+            if [ "${status_code}" = "200" ] && [ "${marker_present}" = "yes" ]; then
+              echo "Host check PASSED on attempt ${attempt}: status=200 marker=found"
               exit 0
             fi
             sleep 2
           done
-          echo "Unable to access ${url} from CI host"
+          echo "Host check FAILED after 30 attempts: unable to access ${url} with expected content"
           docker compose -f docker/docker-compose.yml ps agent-app || true
           docker compose -f docker/docker-compose.yml logs agent-app || true
           exit 1
