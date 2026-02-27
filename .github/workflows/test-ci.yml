@@ -73,13 +73,17 @@ jobs:
 
       - name: Verify host access to static frontend
         run: |
+          set -euo pipefail
+          url="http://localhost:8000/static/index.html"
           for _ in $(seq 1 30); do
-            if curl -fsS http://localhost:8000/static/index.html | grep -q "CRM Assistant"; then
+            status_code="$(curl -sS --connect-timeout 2 --max-time 5 -o /tmp/static-index.html -w '%{http_code}' "${url}" || echo "000")"
+            if [ "${status_code}" = "200" ] && grep -q "CRM Assistant" /tmp/static-index.html; then
               exit 0
             fi
             sleep 2
           done
-          echo "Unable to access http://localhost:8000/static/index.html from CI host"
+          echo "Unable to access ${url} from CI host"
+          docker compose -f docker/docker-compose.yml ps agent-app || true
           docker compose -f docker/docker-compose.yml logs agent-app || true
           exit 1
 
