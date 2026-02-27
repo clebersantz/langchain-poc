@@ -71,12 +71,35 @@ jobs:
       - name: Start agent-app service
         run: docker compose -f docker/docker-compose.yml up -d agent-app
 
+      - name: Verify static frontend from inside agent-app
+        run: |
+          set -euo pipefail
+          docker compose -f docker/docker-compose.yml exec -T agent-app python - <<'PY'
+          import time
+          import urllib.request
+
+          url = "http://127.0.0.1:8000/static/index.html"
+          deadline = time.time() + 60
+          last_error = ""
+          while time.time() < deadline:
+              try:
+                  with urllib.request.urlopen(url, timeout=5) as response:
+                      body = response.read().decode("utf-8", errors="ignore")
+                  if response.status == 200 and "CRM Assistant" in body:
+                      raise SystemExit(0)
+                  last_error = f"unexpected response: status={response.status}"
+              except Exception as exc:
+                  last_error = str(exc)
+              time.sleep(2)
+          raise SystemExit(f"Unable to access {url} from inside agent-app: {last_error}")
+          PY
+
       - name: Verify host access to static frontend
         run: |
           set -euo pipefail
           url="http://localhost:8000/static/index.html"
           for _ in $(seq 1 30); do
-            status_code="$(curl -sS --connect-timeout 2 --max-time 5 -o /tmp/static-index.html -w '%{http_code}' "${url}" || echo "000")"
+            status_code="$(curl -s --connect-timeout 2 --max-time 5 -o /tmp/static-index.html -w '%{http_code}' "${url}" || printf '000')"
             if [ "${status_code}" = "200" ] && grep -q "CRM Assistant" /tmp/static-index.html; then
               exit 0
             fi
