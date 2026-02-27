@@ -187,8 +187,7 @@ docker compose -f docker/docker-compose.test-odoo.yml up -d
 ```
 
 For host access, open `http://localhost:8000/static/index.html`.
-The app is published via `agent-proxy` as `127.0.0.1:8000 -> agent-app:8000`
-(same pattern used by the Odoo proxy service).
+The app is published directly by `agent-app` as `127.0.0.1:8000 -> agent-app:8000`.
 
 Test Odoo credentials in this setup:
 - User: `admin`
@@ -213,10 +212,10 @@ pytest tests/unit/
 pytest tests/integration/
 ```
 
-To validate host access to the Dockerized chat endpoint in CI, run:
+To validate host access to the Dockerized static frontend in CI, run:
 
 ```bash
-AGENT_CHAT_URL=http://127.0.0.1:8000/chat pytest tests/integration/test_agent_chat_docker_access.py
+RUN_DOCKER_STATIC_TEST=1 pytest tests/integration/test_agent_chat_docker_access.py
 ```
 
 ---

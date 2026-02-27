@@ -68,6 +68,21 @@ jobs:
       - name: Run tests in docker compose image
         run: docker compose -f docker/docker-compose.yml run --rm --no-deps agent-app pytest tests/unit
 
+      - name: Start agent-app service
+        run: docker compose -f docker/docker-compose.yml up -d agent-app
+
+      - name: Verify host access to static frontend
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/static/index.html | grep -q "CRM Assistant"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Unable to access http://localhost:8000/static/index.html from CI host"
+          docker compose -f docker/docker-compose.yml logs agent-app || true
+          exit 1
+
       - name: Run detailed Odoo connection test script
         run: |
           docker compose -f docker/docker-compose.yml run --rm --no-deps \

@@ -1,4 +1,4 @@
-"""Integration checks for host access to chat endpoint in Docker-based CI runs."""
+"""Integration checks for host access to static frontend in Docker-based CI runs."""
 
 import os
 import time
@@ -7,27 +7,21 @@ from urllib.request import Request, urlopen
 
 import pytest
 
-CHAT_ENDPOINT_URL = os.getenv("AGENT_CHAT_URL")
+STATIC_FRONTEND_URL = os.getenv("AGENT_STATIC_URL", "http://localhost:8000/static/index.html")
 
 
-def _wait_for_chat_endpoint(url: str, timeout_s: int = 60) -> None:
+def _wait_for_static_frontend(url: str, timeout_s: int = 60) -> None:
     deadline = time.time() + timeout_s
     last_error = "unreachable"
     while time.time() < deadline:
-        request = Request(
-            url,
-            data=b"{}",
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
+        request = Request(url, method="GET")
         try:
             with urlopen(request, timeout=5) as response:
-                if response.status in (200, 422):
+                body = response.read().decode("utf-8", errors="ignore")
+                if response.status == 200 and "CRM Assistant" in body:
                     return
                 last_error = f"unexpected status {response.status}"
         except HTTPError as error:
-            if error.code == 422:
-                return
             last_error = f"http {error.code}"
         except URLError as error:
             last_error = str(error.reason)
@@ -35,12 +29,12 @@ def _wait_for_chat_endpoint(url: str, timeout_s: int = 60) -> None:
             last_error = str(error)
         time.sleep(2)
 
-    pytest.fail(f"Chat endpoint not reachable from host at {url}: {last_error}")
+    pytest.fail(f"Static frontend not reachable from host at {url}: {last_error}")
 
 
-def test_chat_endpoint_reachable_from_host_in_ci() -> None:
-    """Ensure host machine can reach POST /chat in CI docker runs."""
-    if not CHAT_ENDPOINT_URL:
-        pytest.skip("Set AGENT_CHAT_URL to run host-to-container chat connectivity checks.")
+def test_static_frontend_reachable_from_host_in_ci() -> None:
+    """Ensure host machine can reach /static/index.html in CI docker runs."""
+    if not os.getenv("RUN_DOCKER_STATIC_TEST"):
+        pytest.skip("Set RUN_DOCKER_STATIC_TEST=1 to run host-to-container connectivity checks.")
 
-    _wait_for_chat_endpoint(CHAT_ENDPOINT_URL)
+    _wait_for_static_frontend(STATIC_FRONTEND_URL)

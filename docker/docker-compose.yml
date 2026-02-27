@@ -11,22 +11,11 @@ services:
       - ../knowledge_base:/app/knowledge_base
     env_file:
       - ../.env
+    ports:
+      - "127.0.0.1:8000:8000"
     depends_on:
       - chroma
     restart: unless-stopped
-    networks:
-      - odoo-dev_default
-
-  agent-proxy:
-    image: ghcr.io/tecnativa/docker-whitelist:latest
-    container_name: langchain-poc-proxy
-    depends_on:
-      - agent-app
-    ports:
-      - "127.0.0.1:8000:8000"
-    environment:
-      PORT: "8000"
-      TARGET: agent-app
     networks:
       - odoo-dev_default
 
