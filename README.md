@@ -176,33 +176,34 @@ A simple static HTML/JS chat UI served at `/static/index.html`. No JS framework 
 ## Docker
 
 ```bash
-# Start the application and ChromaDB (no external network required)
+# Requires the doodba ODOO stack to be running first (creates odoo-dev_default network):
+#   git clone https://github.com/santzit/doodba-santzit-br
+#   cd doodba-santzit-br && docker compose --file devel.yaml -p odoo-dev up -d
+
+# Pre-create shared networks (run once per host)
+docker network create odoo-dev_default || true
+docker network create inverseproxy_shared || true
+docker network create globalwhitelist_shared || true
+
+# Start the application and ChromaDB
 docker compose -f docker/docker-compose.yml up -d
 
 # Ingest knowledge base inside the container
 docker compose -f docker/docker-compose.yml exec agent-app python scripts/ingest_knowledge_base.py
-
-# Start a test-only Odoo 16 + CRM stack (optional — needed only for Odoo features)
-docker compose -f docker/docker-compose.test-odoo.yml up -d
 ```
 
 For host access, open `http://localhost:8000/static/index.html`.
 The app is published directly by `agent-app` as `127.0.0.1:8000 -> agent-app:8000`.
 
-> **Note**: `agent-app` runs standalone — no external Docker network is required.
-> When running the optional Odoo test stack alongside `agent-app`, set
-> `ODOO_URL=http://host.docker.internal:8069` in your `.env` so the container
-> can reach Odoo through the host-published port (works on Linux, macOS, and Windows).
+> **Note**: `agent-app` connects to both the default compose network and the external
+> `odoo-dev_default` network created by the [doodba](https://github.com/santzit/doodba-santzit-br)
+> ODOO stack. Set `ODOO_URL=http://odoo_proxy:16069` and `ODOO_DB=devel` in your `.env`.
 
-Test Odoo credentials in this setup:
-- User: `admin`
-- Password: `admin`
-
-Run a CRM connectivity check against the Docker Odoo test stack:
+Local integration test (after starting both stacks):
 
 ```bash
-ODOO_URL=http://localhost:8069 \
-ODOO_DB=odoo_test \
+ODOO_URL=http://odoo_proxy:16069 \
+ODOO_DB=devel \
 ODOO_USER=admin \
 ODOO_API_KEY=admin \
 pytest tests/integration/test_odoo_docker_crm.py

@@ -1,36 +1,36 @@
 services:
-  test-db:
+  db:
     image: postgres:15
-    container_name: langchain-poc-test-db
     environment:
-      POSTGRES_DB: odoo_test
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: devel
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
     volumes:
       - test_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d odoo_test"]
+      test: ["CMD-SHELL", "pg_isready -U odoo -d devel"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  test-odoo:
+  odoo_proxy:
     image: odoo:16.0
-    container_name: langchain-poc-test-odoo
     depends_on:
-      test-db:
+      db:
         condition: service_healthy
     ports:
-      - "8069:8069"
+      - "16069:16069"
     environment:
-      HOST: test-db
-      USER: admin
-      PASSWORD: admin
+      HOST: db
+      USER: odoo
+      PASSWORD: odoo
     command:
       [
         "odoo",
-        "--database=odoo_test",
+        "--database=devel",
+        "--http-port=16069",
         "--init=crm",
+        "--without-demo=all",
       ]
     volumes:
       - test_odoo_data:/var/lib/odoo
