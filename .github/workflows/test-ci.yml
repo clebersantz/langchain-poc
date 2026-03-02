@@ -56,7 +56,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install doodba invoke tools
-        run: pip install invoke pre-commit
+        run: pip install invoke
 
       - name: Git aggregate (fetch OCA modules)
         working-directory: odoo-dev
