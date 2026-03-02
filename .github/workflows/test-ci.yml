@@ -22,15 +22,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate OPENAI_API_KEY is configured
+      - name: Validate required secrets
         run: |
           if [ -z "${OPENAI_API_KEY}" ]; then
-            echo "OPENAI_API_KEY is required for CI AI-agent integration tests."
+            echo "::error::OPENAI_API_KEY is required for CI AI-agent integration tests."
+            exit 1
+          fi
+          if [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "::error::GH_PAT secret is required to clone santzit/doodba-santzit-br. Add a GH_PAT repo-scoped token to this repository's secrets."
             exit 1
           fi
 
       - name: Prepare env file
         run: cp .env.example .env
+
+      # Run unit tests early so they always pass independently of doodba setup.
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests (host Python)
+        run: pytest tests/unit -q
 
       # Pre-create Docker networks required by doodba before any stack starts.
       # odoo-dev_default is created automatically when the doodba stack starts
@@ -42,18 +58,15 @@ jobs:
 
       # Checkout to ./odoo-dev so Docker Compose uses "odoo-dev" as the project
       # name, which creates the odoo-dev_default network our agent-app joins.
+      # IMPORTANT: doodba must start before langchain-poc so that the
+      # odoo-dev_default network exists when agent-app containers are created.
       - name: Checkout doodba ODOO repository
         uses: actions/checkout@v4
         with:
           repository: santzit/doodba-santzit-br
-          ref: 16.0
+          ref: "16.0"
           path: odoo-dev
           token: ${{ secrets.GH_PAT }}
-
-      - name: Set up Python for doodba invoke
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
 
       - name: Install doodba invoke tools
         run: pip install invoke
@@ -212,5 +225,7 @@ jobs:
 
       - name: Cleanup doodba ODOO stack
         if: always()
-        working-directory: odoo-dev
-        run: docker compose -f devel.yaml -p odoo-dev down -v || true
+        run: |
+          if [ -d odoo-dev ]; then
+            docker compose -f odoo-dev/devel.yaml -p odoo-dev down -v || true
+          fi
