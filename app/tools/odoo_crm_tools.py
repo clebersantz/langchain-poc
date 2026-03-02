@@ -4,6 +4,7 @@ import json
 
 from langchain_core.tools import tool
 
+from app.odoo.client import OdooClient
 from app.odoo.models.crm_lead import (
     add_lead_note,
     convert_to_opportunity,
@@ -14,6 +15,17 @@ from app.odoo.models.crm_lead import (
     search_leads,
     update_lead,
 )
+
+
+@tool
+def get_odoo_version() -> str:
+    """Return the Odoo server version information.
+
+    Returns:
+        str: JSON object with Odoo server version details.
+    """
+    client = OdooClient()
+    return json.dumps(client.get_version(), default=str)
 
 
 @tool

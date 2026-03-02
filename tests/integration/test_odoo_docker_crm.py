@@ -11,6 +11,8 @@ from app.odoo.client import OdooClient
 
 NOTE_TEXT = "Hello! This is an CRM Bot automation test."
 
+_last_updated_lead_id: int | None = None
+
 
 def _odoo_agent_env_ready() -> bool:
     required = ("ODOO_URL", "ODOO_DB", "ODOO_USER", "ODOO_API_KEY", "OPENAI_API_KEY")
@@ -53,7 +55,7 @@ def test_odoo_agent_connection():
     agent = OdooAPIAgent()
     response = agent.run(
         "Use your Odoo CRM tools to verify connectivity. "
-        "Call search_crm_leads with query '' and limit 1, then reply exactly CONNECTED."
+        "Connect to ODOO, get ODOO version and reply exactly CONNECTED if version >= 16.0"
     )
 
     print(f"Odoo connection successful. Version: {server_version}")
@@ -113,6 +115,9 @@ def test_odoo_agent_first_crm_lead_write_note():
     assert lead_id > 0
     assert message_id > 0
 
+    global _last_updated_lead_id
+    _last_updated_lead_id = lead_id
+
     lead_rows = client.search_read(
         "crm.lead",
         [["id", "=", lead_id]],
@@ -134,3 +139,32 @@ def test_odoo_agent_first_crm_lead_write_note():
     note_body = str(messages[0].get("body", ""))
     print(f"Posted note for lead {lead_id}: {note_body}")
     assert NOTE_TEXT in note_body
+
+
+def test_odoo_agent_verify_crm_lead_note():
+    """Verify that the note posted in the previous test persists on the CRM lead."""
+    if not _odoo_agent_env_ready():
+        pytest.skip(
+            "Set ODOO_URL, ODOO_DB, ODOO_USER, ODOO_API_KEY and OPENAI_API_KEY "
+            "to run AI-agent Odoo integration checks."
+        )
+
+    if _last_updated_lead_id is None:
+        pytest.skip("test_odoo_agent_first_crm_lead_write_note did not run or did not set lead_id.")
+
+    client = OdooClient()
+    _wait_for_odoo_ready(client)
+    lead_id = _last_updated_lead_id
+
+    messages = client.search_read(
+        "mail.message",
+        [["model", "=", "crm.lead"], ["res_id", "=", lead_id]],
+        ["id", "body"],
+        limit=100,
+    )
+    assert len(messages) > 0, f"No messages found for CRM lead {lead_id}."
+    note_bodies = [str(msg.get("body", "")) for msg in messages]
+    assert any(NOTE_TEXT in body for body in note_bodies), (
+        f"Expected note '{NOTE_TEXT}' not found in messages of lead {lead_id}: {note_bodies}"
+    )
+    print(f"Note verified for lead {lead_id}.")
