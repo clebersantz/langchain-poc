@@ -236,5 +236,4 @@ RUN_DOCKER_STATIC_TEST=1 pytest tests/integration/test_agent_chat_docker_access.
 
 ---
 
-> **Note**: A test-only Odoo 16 + CRM setup is available at `docker/docker-compose.test-odoo.yml`.
 > **Note**: API endpoints have no authentication (POC only). Add auth before production use.
