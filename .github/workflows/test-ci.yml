@@ -69,7 +69,7 @@ jobs:
           token: ${{ secrets.GH_PAT }}
 
       - name: Install doodba invoke tools
-        run: pip install invoke
+        run: pip install invoke pre-commit
 
       - name: Git aggregate (fetch OCA modules)
         working-directory: odoo-dev
