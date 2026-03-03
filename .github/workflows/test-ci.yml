@@ -115,6 +115,17 @@ jobs:
           PGDATABASE: devel
         run: invoke resetdb --modules crm
 
+      # resetdb stops the Odoo service after module init; restart it so the
+      # web server is reachable when the agent-app wait step runs.
+      - name: Restart doodba ODOO after database init
+        working-directory: odoo-dev
+        env:
+          COMPOSE_FILE: devel.yaml
+          COMPOSE_PROJECT_NAME: odoo-dev
+          DOODBA_NETWORK_INTERNAL: "false"
+          PGDATABASE: devel
+        run: invoke start
+
       - name: Build langchain-poc docker image
         run: docker compose -f docker/docker-compose.yml build
 
