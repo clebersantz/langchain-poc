@@ -78,7 +78,12 @@ jobs:
           COMPOSE_PROJECT_NAME: odoo-dev
           DOODBA_NETWORK_INTERNAL: "false"
           PGDATABASE: devel
-        run: invoke git-aggregate
+        run: |
+          for attempt in 1 2 3; do
+            invoke git-aggregate && break
+            echo "git-aggregate attempt ${attempt} failed (likely transient DNS); retrying in 15s..."
+            sleep 15
+          done
 
       - name: Build doodba ODOO image
         working-directory: odoo-dev
