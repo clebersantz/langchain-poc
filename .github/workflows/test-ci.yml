@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY || vars.OPENAI_API_KEY }}
-      ODOO_URL: http://odoo_proxy:16069
+      ODOO_URL: http://odoo:8069
       ODOO_DB: devel
       ODOO_USER: ${{ secrets.ODOO_USER || 'admin' }}
       ODOO_API_KEY: ${{ secrets.ODOO_API_KEY || 'admin' }}
@@ -34,7 +34,10 @@ jobs:
           fi
 
       - name: Prepare env file
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          # Override Odoo URL for CI — doodba service is 'odoo' on port 8069
+          sed -i 's|^ODOO_URL=.*|ODOO_URL=http://odoo:8069|' .env
 
       # Run unit tests early so they always pass independently of doodba setup.
       - name: Set up Python
@@ -128,7 +131,7 @@ jobs:
           from app.odoo.client import OdooClient
 
           client = OdooClient()
-          deadline = time.time() + 180
+          deadline = time.time() + 300
           while time.time() < deadline:
               try:
                   client.get_version()
